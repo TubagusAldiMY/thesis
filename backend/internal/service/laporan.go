@@ -31,6 +31,9 @@ type Dashboard struct {
 	PeriodeBerjalan int                  `json:"periode_berjalan"`
 	Aktif           *DashboardPeriode    `json:"aktif"` // nil bila semua periode selesai / belum ada
 	Terbaru         []domain.Periode     `json:"terbaru"`
+	// TotalTersalurSemua = realisasi semua periode; ditampilkan saat Aktif nil
+	// supaya kartu "Total tersalur" tidak jatuh ke Rp 0 setelah periode ditutup.
+	TotalTersalurSemua int64 `json:"total_tersalur_semua"`
 }
 
 // langkahAktif menentukan posisi stepper dari data periode.
@@ -60,7 +63,11 @@ func (s *Service) AmbilDashboard(ctx context.Context) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("service.AmbilDashboard: %w", err)
 	}
-	d := Dashboard{AsnafCounts: m.AsnafCounts, Terbaru: ps}
+	total, err := s.st.TotalPenyaluran(ctx)
+	if err != nil {
+		return Dashboard{}, fmt.Errorf("service.AmbilDashboard: %w", err)
+	}
+	d := Dashboard{AsnafCounts: m.AsnafCounts, Terbaru: ps, TotalTersalurSemua: total}
 	for _, n := range m.AsnafCounts {
 		d.MustahikAktif += n
 	}

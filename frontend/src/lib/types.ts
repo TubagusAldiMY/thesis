@@ -187,6 +187,8 @@ export interface Dashboard {
 		total_tersalur: number;
 	} | null;
 	terbaru: Periode[];
+	/** Realisasi semua periode (rupiah) — dipakai kartu Total tersalur saat tidak ada periode aktif. */
+	total_tersalur_semua: number;
 }
 
 export interface Laporan {

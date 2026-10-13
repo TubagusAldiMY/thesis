@@ -55,8 +55,15 @@
 		</div>
 		<div class="kartu ringkas">
 			<p class="redup">Total tersalur</p>
-			<p class="besar">{rupiahRingkas(d.aktif?.total_tersalur ?? 0)}</p>
-			<p class="redup kecil">{d.aktif?.total_tersalur ? 'Pada periode aktif' : 'Belum ada penyaluran tercatat'}</p>
+			<!-- Ada periode aktif → realisasi periode itu; tidak ada → total semua periode. -->
+			<p class="besar">{rupiahRingkas(d.aktif ? d.aktif.total_tersalur : d.total_tersalur_semua)}</p>
+			<p class="redup kecil">
+				{#if d.aktif}
+					{d.aktif.total_tersalur ? 'Pada periode aktif' : 'Belum ada penyaluran pada periode aktif'}
+				{:else}
+					{d.total_tersalur_semua ? 'Dari semua periode' : 'Belum ada penyaluran tercatat'}
+				{/if}
+			</p>
 		</div>
 	</div>
 
@@ -67,7 +74,7 @@
 				<div>
 					<h2>{a.periode.nama}</h2>
 					<p class="redup">
-						Langkah berikutnya: {a.periode.status === 'ditolak' ? 'buka kembali & perbaiki penilaian' : langkah[a.langkah_aktif - 1].toLowerCase()}
+						Langkah berikutnya: {a.periode.status === 'ditolak' ? 'Buka kembali & perbaiki penilaian' : langkah[a.langkah_aktif - 1]}
 					</p>
 				</div>
 				<a class="tombol utama" href="/periode/{a.periode.id}/{tujuan[a.langkah_aktif]}">

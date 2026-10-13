@@ -82,6 +82,20 @@ type penyaluranRow struct {
 	CreatedAt   time.Time `db:"created_at"`
 }
 
+// TotalPenyaluran menjumlah seluruh realisasi dari semua periode yang tidak
+// dihapus — angka "Total tersalur" di Beranda saat tidak ada periode aktif.
+func (s *Store) TotalPenyaluran(ctx context.Context) (int64, error) {
+	var total int64
+	err := sqlx.GetContext(ctx, s.q, &total,
+		`SELECT CAST(COALESCE(SUM(py.nominal), 0) AS SIGNED)
+		   FROM penyaluran py JOIN periode p ON p.id = py.periode_id
+		  WHERE p.deleted_at IS NULL`)
+	if err != nil {
+		return 0, fmt.Errorf("store.TotalPenyaluran: %w", mapErr(err))
+	}
+	return total, nil
+}
+
 // ListPenyaluran mengembalikan realisasi periode menurut urutan pencatatan.
 func (s *Store) ListPenyaluran(ctx context.Context, periodeID string) ([]domain.Penyaluran, error) {
 	var rows []penyaluranRow

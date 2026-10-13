@@ -149,6 +149,11 @@ func TestPenyaluran_AturanLaluTutupDanLaporan(t *testing.T) {
 	if st := c.statusPeriode(t); st != domain.StatusSelesai {
 		t.Fatalf("status = %s, mau selesai", st)
 	}
+	// Regresi: setelah ditutup tidak ada periode aktif, tetapi Beranda harus
+	// tetap tahu total yang sudah tersalur (dulu kartu jatuh ke Rp 0).
+	if d, err := c.e.svc.AmbilDashboard(bg); err != nil || d.Aktif != nil || d.TotalTersalurSemua != 3_000_000 {
+		t.Fatalf("dashboard setelah tutup: err=%v aktif=%v total=%d, mau nil & 3000000", err, d.Aktif, d.TotalTersalurSemua)
+	}
 
 	l, err := c.e.svc.AmbilLaporan(bg, c.periode.ID)
 	if err != nil {
