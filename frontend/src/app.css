@@ -222,6 +222,9 @@ tr:last-child td {
 .field {
 	display: grid;
 	gap: 0.35rem;
+	/* Jangan regangkan baris saat field tetangga lebih tinggi (mis. NIK +
+	   teks bantuan di sebelah select asnaf) — select ikut memanjang. */
+	align-content: start;
 }
 .field label,
 .label {

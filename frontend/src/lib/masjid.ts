@@ -4,6 +4,10 @@ import { env } from '$env/dynamic/public';
 
 export const masjid = {
 	nama: env.PUBLIC_MASJID_NAMA || 'Masjid Jami Al-Barokah',
-	alamat: env.PUBLIC_MASJID_ALAMAT || '[ALAMAT MASJID]',
-	kontak: env.PUBLIC_MASJID_KONTAK || '[KONTAK]'
+	// Kosong bila belum diisi: kop laporan tidak boleh mencetak placeholder.
+	alamat: env.PUBLIC_MASJID_ALAMAT || '',
+	kontak: env.PUBLIC_MASJID_KONTAK || ''
 };
+
+/** Baris kedua kop: "alamat · kontak", melewati bagian yang kosong. */
+export const kopMasjid = [masjid.alamat, masjid.kontak].filter(Boolean).join(' · ');

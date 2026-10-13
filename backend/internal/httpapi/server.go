@@ -208,7 +208,7 @@ func (a *API) peran(h http.HandlerFunc, boleh ...domain.Role) http.Handler {
 			}
 		}
 		if !izin {
-			a.tulisError(w, r, http.StatusForbidden, "Akses tidak diizinkan untuk peran Anda", nil)
+			a.tulisError(w, r, http.StatusForbidden, "Peran Anda tidak memiliki akses ke fitur ini", nil)
 			return
 		}
 		ctx := context.WithValue(context.WithValue(r.Context(), kunciUser, u), kunciToken, c.Value)

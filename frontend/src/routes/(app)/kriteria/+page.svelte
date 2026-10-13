@@ -72,7 +72,7 @@
 						<tr>
 							<td><strong>{k.kode}</strong><input type="hidden" name="id" value={k.id} /></td>
 							<td>{k.nama}</td>
-							<td>
+							<td class="tipe">
 								{#if admin && isian[k.id]}
 									<label class="sr-only" for="tipe-{k.id}">Tipe {k.kode}</label>
 									<select id="tipe-{k.id}" name="tipe.{k.id}" bind:value={isian[k.id].tipe}>
@@ -141,6 +141,11 @@
 </div>
 
 <style>
+	/* select global lebarnya 100% sel; tanpa batas bawah kolom ini menyusut
+	   sampai "benefit"/"cost" terpotong karena kolom skala minta 18rem. */
+	.tipe select {
+		min-width: 8.5rem;
+	}
 	.bobot input {
 		width: 6.5rem;
 		text-align: right;

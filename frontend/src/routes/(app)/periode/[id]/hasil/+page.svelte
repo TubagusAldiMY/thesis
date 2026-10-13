@@ -70,21 +70,24 @@
 			<div class="tabel-wadah">
 				<table>
 					<thead>
-						<tr><th>#</th><th>Mustahik</th><th class="kanan">S</th><th>K</th><th>Status</th></tr>
+						<tr><th>#</th><th>Mustahik</th><th class="kanan lebar-saja">S</th><th>K</th><th class="lebar-saja">Status</th></tr>
 					</thead>
 					<tbody>
 						{#each h.items as it (it.mustahik.id)}
 							<tr class:usulan={it.status === 'usulan'}>
 								<td>{it.ranking}</td>
-								<td><strong>{kode.get(it.mustahik.id) ?? ''} · {it.mustahik.nama}</strong></td>
-								<td class="kanan angka">{desimal(it.s)}</td>
+								<td>
+									<strong>{kode.get(it.mustahik.id) ?? ''} · {it.mustahik.nama}</strong>
+									<span class="badge kapital hp-saja {it.status === 'usulan' ? 'hijau' : ''}">{it.status}</span>
+								</td>
+								<td class="kanan angka lebar-saja">{desimal(it.s)}</td>
 								<td>
 									<span class="k">
 										<span class="bar" aria-hidden="true"><span class:abu={it.status !== 'usulan'} style:width="{Math.min(100, it.k * 100)}%"></span></span>
 										<span class="angka">{desimal(it.k)}</span>
 									</span>
 								</td>
-								<td><span class="badge kapital {it.status === 'usulan' ? 'hijau' : ''}">{it.status}</span></td>
+								<td class="lebar-saja"><span class="badge kapital {it.status === 'usulan' ? 'hijau' : ''}">{it.status}</span></td>
 							</tr>
 						{/each}
 					</tbody>
@@ -134,9 +137,6 @@
 				</p>
 			</div>
 
-			{#if form?.diputuskan}
-				<p class="kotak-sukses" role="status">Keputusan tersimpan: {form.diputuskan === 'setuju' ? 'usulan disetujui' : 'usulan ditolak'}.</p>
-			{/if}
 			{#if form?.error && !form?.diputuskan}<p class="kotak-galat" role="alert">{form.fields?.catatan ?? form.error}</p>{/if}
 
 			{#if p.status === 'dihitung' && !lamaDilihat}
@@ -182,10 +182,10 @@
 					<a class="tombol" href="/periode/{p.id}/penilaian">Hitung ulang dari penilaian</a>
 				{/if}
 			{:else if p.status === 'disetujui' || p.status === 'selesai'}
-				<p class="kotak-sukses">Usulan disetujui.{admin && p.status === 'disetujui' ? ' Lanjutkan pencatatan penyaluran.' : ''}</p>
+				<p class="kotak-sukses" role="status">Usulan disetujui.{admin && p.status === 'disetujui' ? ' Lanjutkan pencatatan penyaluran.' : ''}</p>
 				{#if admin && p.status === 'disetujui'}<a class="tombol utama lebar" href="/periode/{p.id}/penyaluran">Catat penyaluran</a>{/if}
 			{:else if p.status === 'ditolak'}
-				<p class="kotak-galat">Usulan ditolak. Lihat catatan di atas.</p>
+				<p class="kotak-galat" role="status">Usulan ditolak. Lihat catatan di atas.</p>
 			{/if}
 
 			<a class="tombol lebar" href="/periode/{p.id}/laporan">Lihat laporan</a>
@@ -266,6 +266,22 @@
 	}
 	.tolak[open] summary {
 		margin-bottom: 0.75rem;
+	}
+	.hp-saja {
+		display: none;
+	}
+	@media (max-width: 640px) {
+		/* HP: kolom S, grafik batang, dan kolom Status disembunyikan agar
+		   K muat tanpa geser; status pindah ke bawah nama, S tetap ada di
+		   "Lihat langkah hitung". */
+		.lebar-saja,
+		.bar {
+			display: none;
+		}
+		.hp-saja {
+			display: inline-block;
+			margin-top: 0.3rem;
+		}
 	}
 	@media (max-width: 1000px) {
 		.tata {

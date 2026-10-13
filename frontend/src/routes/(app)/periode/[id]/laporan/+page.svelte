@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
 	import { angka, desimal, rupiah, tanggal, tanggalSaja } from '$lib/format';
-	import { masjid } from '$lib/masjid';
+	import { kopMasjid, masjid } from '$lib/masjid';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -30,11 +30,18 @@
 	<button class="tombol utama" type="button" onclick={() => window.print()}>Cetak / Simpan PDF</button>
 </div>
 
+{#if !masjid.alamat || !masjid.kontak}
+	<p class="kotak-info tanpa-cetak" role="status">
+		Alamat/kontak masjid belum diisi, jadi tidak tampil di kop. Isi <code>PUBLIC_MASJID_ALAMAT</code> dan
+		<code>PUBLIC_MASJID_KONTAK</code> di <code>frontend/.env</code>, lalu jalankan ulang frontend.
+	</p>
+{/if}
+
 <article class="kartu laporan">
 	<header class="kop">
 		<div>
 			<h1>{masjid.nama}</h1>
-			<p>{masjid.alamat} · {masjid.kontak}</p>
+			{#if kopMasjid}<p>{kopMasjid}</p>{/if}
 		</div>
 		<div class="kanan">
 			<strong>LAPORAN PENYALURAN {p.jenis === 'zakat' ? 'ZAKAT' : 'INFAK'}</strong>

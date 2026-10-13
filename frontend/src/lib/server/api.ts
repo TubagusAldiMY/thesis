@@ -109,7 +109,8 @@ export async function aksi<T, E extends Record<string, unknown> = Record<string,
 /** wajibAdmin: halaman khusus Admin dibalas 403 untuk Ketua (deny-by-default, FR-02). */
 export function wajibAdmin(user: User | null): asserts user is User {
 	if (user?.role !== 'admin') {
-		error(403, 'Akses tidak diizinkan. Halaman ini hanya untuk Admin.');
+		// Judul "Akses tidak diizinkan" sudah ditulis +error.svelte; pesan cukup alasannya.
+		error(403, 'Halaman ini hanya untuk Admin. Anda masuk sebagai Ketua DKM.');
 	}
 }
 

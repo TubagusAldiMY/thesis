@@ -53,17 +53,17 @@
 			<div class="tabel-wadah">
 				<table>
 					<thead>
-						<tr><th>Nama</th><th class="lebar-saja">NIK</th><th>Golongan</th><th class="lebar-saja">Alamat</th><th>Status</th><th class="kanan">Aksi</th></tr>
+						<tr><th>Nama</th><th class="lebar-saja">NIK</th><th>Golongan</th><th class="lebar-saja">Alamat</th><th>Status</th><th class="kanan lebar-saja">Aksi</th></tr>
 					</thead>
 					<tbody>
 						{#each h.items as m (m.id)}
 							<tr>
-								<td><strong>{m.nama}</strong></td>
+								<td><a class="nama" href="/mustahik/{m.id}"><strong>{m.nama}</strong></a></td>
 								<td class="angka redup lebar-saja nowrap">{m.nik_tersamar}</td>
 								<td>{labelAsnaf[m.asnaf]}</td>
 								<td class="alamat lebar-saja">{m.alamat}</td>
 								<td><span class="badge {m.aktif ? 'hijau' : ''}">{m.aktif ? 'Aktif' : 'Nonaktif'}</span></td>
-								<td class="kanan"><a href="/mustahik/{m.id}">Ubah</a></td>
+								<td class="kanan lebar-saja"><a href="/mustahik/{m.id}">Ubah</a></td>
 							</tr>
 						{/each}
 					</tbody>
@@ -103,8 +103,13 @@
 		flex-wrap: wrap;
 		gap: 0.75rem;
 	}
+	.nama {
+		color: inherit;
+		text-decoration: none;
+	}
 	@media (max-width: 640px) {
-		/* HP: NIK & alamat disembunyikan; tetap terlihat di formulir Ubah */
+		/* HP: NIK, alamat, dan kolom Aksi disembunyikan agar tabel muat
+		   tanpa geser; nama menjadi tautan ke formulir Ubah. */
 		.lebar-saja {
 			display: none;
 		}
