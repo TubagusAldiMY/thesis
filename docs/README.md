@@ -24,4 +24,8 @@ Judul skripsi: *Sistem Pendukung Keputusan Penyaluran Dana Zakat dan Infak Masji
 8. **Pekerjaan di sisi desain** (dokumen sudah menetapkan acuannya di dokumen 04 bagian 4): ganti grid Penilaian tablet yang terpotong dengan kartu; sembunyikan scrollbar pada chip filter Android; ubah label "Dashboard" → "Beranda" di desktop; gambar halaman Profil & password, daftar Laporan, dan Tentang aplikasi; tambah tombol "Lihat ranking run lama" dan "Kembalikan" di Android; samakan isi layar laporan dengan template cetak.
 
 ## Status
-Tahap: **rancangan + implementasi awal**. Yang sudah ada kodenya: paket `backend/internal/aras` (perhitungan ARAS, 100% cakupan test), migrasi MySQL (`backend/migrations`, 12 tabel + seed kriteria), `backend/internal/store` (kriteria, mustahik, periode, kandidat; diuji ke MySQL 8.0 asli), `backend/internal/crypto` (Argon2id, AES-256-GCM, HMAC), dan `backend/internal/service` (aturan bisnis kriteria, mustahik, periode, kandidat, **penilaian, dan Hitung ARAS** — alur ranking lengkap dari data sampai tersimpan, diuji dengan contoh dokumen 02). Cara menjalankan: [../how-to-run.md](../how-to-run.md); penjelasan kode: [../ARCHITECTURE.md](../ARCHITECTURE.md). Server, database, dan frontend belum dibuat.
+Tahap: **implementasi fitur lengkap (FR-01 s.d. FR-22)** — tinggal validasi & pengujian pengguna. Sudah ada: backend Go (`aras`, `store`, `service`, `httpapi`, CLI `migrate` & `useradmin`), 3 migrasi MySQL, frontend SvelteKit untuk semua rute di dokumen 04, dan `scripts/seed-demo.sh` untuk data demo. Per 13/10/2026: 124 test backend (termasuk integrasi MySQL 8.0 dan alur demo lewat HTTP) dan 24 test frontend lulus; `svelte-check` 0 error.
+
+Belum: keputusan di daftar di atas, pemeriksaan visual di browser terhadap mockup (desktop/tablet/Android), pengujian black-box & UAT bersama pengurus masjid.
+
+Cara menjalankan: [../how-to-run.md](../how-to-run.md); penjelasan kode: [../ARCHITECTURE.md](../ARCHITECTURE.md).
