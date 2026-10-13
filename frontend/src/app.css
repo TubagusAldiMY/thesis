@@ -1,0 +1,338 @@
+/* Gaya global. Token warna diambil dari mockup (App/Design): hijau masjid,
+   latar krem, kartu putih bersudut lembut. Komponen kecil (tombol, badge,
+   tabel, field) didefinisikan di sini supaya halaman cukup memakai kelasnya. */
+
+@import '@fontsource-variable/plus-jakarta-sans';
+
+:root {
+	--hijau: #1f5a45;
+	--hijau-tua: #17473a;
+	--hijau-muda: #e3efe8;
+	--hijau-aktif: #3f7563;
+	--krem: #f5f4ef;
+	--kartu: #ffffff;
+	--garis: #e6e3da;
+	--teks: #1f1e1d;
+	--teks-redup: #6b6a68;
+	--kuning: #fbefd5;
+	--kuning-teks: #8a5a00;
+	--kuning-garis: #d9a033;
+	--merah: #b3261e;
+	--merah-muda: #fbe9e7;
+	--abu: #efede7;
+	--radius: 14px;
+	--font: 'Plus Jakarta Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	background: var(--krem);
+	color: var(--teks);
+	font-family: var(--font);
+	font-size: 16px;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+	line-height: 1.2;
+	margin: 0;
+	letter-spacing: -0.01em;
+}
+h1 {
+	font-size: clamp(1.6rem, 3vw, 2.4rem);
+}
+h2 {
+	font-size: 1.3rem;
+}
+h3 {
+	font-size: 1.05rem;
+}
+p {
+	margin: 0;
+}
+a {
+	color: var(--hijau);
+}
+.redup {
+	color: var(--teks-redup);
+}
+.angka {
+	font-family: var(--mono);
+	font-variant-numeric: tabular-nums;
+}
+.kanan {
+	text-align: right;
+}
+
+/* ---------- kartu & tata letak ---------- */
+.kartu {
+	background: var(--kartu);
+	border: 1px solid var(--garis);
+	border-radius: var(--radius);
+	padding: 1.5rem;
+}
+.kartu-kepala {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin-bottom: 1.25rem;
+}
+.tumpuk {
+	display: grid;
+	gap: 1.5rem;
+}
+/* Item grid bawaan min-width: auto → tabel lebar ikut melebarkan halaman di HP.
+   Dengan 0, hanya .tabel-wadah yang di-scroll horizontal. */
+.tumpuk > * {
+	min-width: 0;
+}
+.grid-kartu {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 1rem;
+}
+.baris-aksi {
+	display: flex;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	align-items: center;
+}
+.baris-aksi.ujung {
+	justify-content: flex-end;
+}
+
+/* ---------- tombol ---------- */
+.tombol {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	min-height: 44px;
+	padding: 0.6rem 1.2rem;
+	border-radius: 10px;
+	border: 1px solid var(--garis);
+	background: var(--kartu);
+	color: var(--teks);
+	font: inherit;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.tombol:hover {
+	border-color: #cfcbbf;
+}
+.tombol.utama {
+	background: var(--hijau);
+	border-color: var(--hijau);
+	color: #fff;
+}
+.tombol.utama:hover {
+	background: var(--hijau-tua);
+}
+.tombol.bahaya {
+	border-color: var(--merah);
+	color: var(--merah);
+}
+.tombol.kecil {
+	min-height: 36px;
+	padding: 0.35rem 0.8rem;
+	font-size: 0.9rem;
+}
+.tombol:disabled,
+.tombol[aria-disabled='true'] {
+	background: #dedbd2;
+	border-color: #dedbd2;
+	color: #6b6a68;
+	cursor: not-allowed;
+}
+.tautan-kembali {
+	text-decoration: none;
+	font-weight: 500;
+}
+
+/* ---------- badge status ---------- */
+.badge {
+	display: inline-block;
+	padding: 0.2rem 0.65rem;
+	border-radius: 999px;
+	font-size: 0.82rem;
+	font-weight: 600;
+	background: var(--abu);
+	color: #4a4945;
+	white-space: nowrap;
+}
+.badge.hijau {
+	background: var(--hijau-muda);
+	color: var(--hijau);
+}
+.badge.kuning {
+	background: var(--kuning);
+	color: var(--kuning-teks);
+}
+.badge.merah {
+	background: var(--merah-muda);
+	color: var(--merah);
+}
+.badge.kapital {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* ---------- tabel: tinggi mengikuti isi, scroll horizontal hanya bila sempit ---------- */
+.tabel-wadah {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+th {
+	text-align: left;
+	font-weight: 600;
+	color: var(--teks-redup);
+	font-size: 0.92rem;
+	padding: 0.6rem 0.75rem;
+	border-bottom: 1px solid var(--garis);
+	white-space: nowrap;
+}
+td {
+	padding: 0.85rem 0.75rem;
+	border-bottom: 1px solid var(--garis);
+	vertical-align: middle;
+}
+tr:last-child td {
+	border-bottom: none;
+}
+
+/* ---------- formulir: label di atas input ---------- */
+.field {
+	display: grid;
+	gap: 0.35rem;
+}
+.field label,
+.label {
+	font-weight: 600;
+	font-size: 0.95rem;
+}
+.field small {
+	color: var(--teks-redup);
+}
+input[type='text'],
+input[type='password'],
+input[type='search'],
+input[type='date'],
+input[type='number'],
+select,
+textarea {
+	width: 100%;
+	min-height: 44px;
+	padding: 0.55rem 0.8rem;
+	border: 1px solid #d6d2c7;
+	border-radius: 10px;
+	background: #fff;
+	color: var(--teks);
+	font: inherit;
+}
+textarea {
+	min-height: 90px;
+	resize: vertical;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.tombol:focus-visible,
+a:focus-visible {
+	outline: 3px solid #9cc5b2;
+	outline-offset: 1px;
+}
+[aria-invalid='true'] {
+	border-color: var(--merah) !important;
+}
+.galat {
+	color: var(--merah);
+	font-size: 0.9rem;
+}
+.kotak-galat {
+	background: var(--merah-muda);
+	color: var(--merah);
+	border-radius: 10px;
+	padding: 0.75rem 1rem;
+}
+.kotak-sukses {
+	background: var(--hijau-muda);
+	color: var(--hijau);
+	border-radius: 10px;
+	padding: 0.75rem 1rem;
+}
+.kotak-info {
+	background: var(--kuning);
+	color: var(--kuning-teks);
+	border-radius: 10px;
+	padding: 0.75rem 1rem;
+}
+
+/* ---------- chip filter: boleh digeser, scrollbar disembunyikan ---------- */
+.chips {
+	display: flex;
+	gap: 0.5rem;
+	overflow-x: auto;
+	scrollbar-width: none;
+	padding-bottom: 2px;
+}
+.chips::-webkit-scrollbar {
+	display: none;
+}
+.chip {
+	padding: 0.4rem 0.95rem;
+	border-radius: 999px;
+	border: 1px solid var(--garis);
+	background: #fff;
+	color: var(--teks);
+	text-decoration: none;
+	white-space: nowrap;
+	font-weight: 500;
+	font-size: 0.92rem;
+}
+.chip[aria-current='true'] {
+	background: var(--hijau);
+	border-color: var(--hijau);
+	color: #fff;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+/* ---------- cetak: sembunyikan navigasi & tombol (NFR-09) ---------- */
+@media print {
+	html,
+	body {
+		background: #fff;
+	}
+	.tanpa-cetak {
+		display: none !important;
+	}
+	.kartu {
+		border: none;
+		padding: 0;
+	}
+}

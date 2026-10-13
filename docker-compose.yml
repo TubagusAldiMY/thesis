@@ -1,0 +1,26 @@
+# MySQL khusus project ini (development & test integrasi).
+# Port diikat ke 127.0.0.1 supaya tidak terbuka ke jaringan.
+# Container lain di mesin ini (mis. payment_mysql di 3307) tidak disentuh.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: spkzakat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?isi MYSQL_ROOT_PASSWORD di .env (lihat .env.example)}
+      MYSQL_DATABASE: spkzakat
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-33070}:3306"
+    volumes:
+      - spkzakat-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  spkzakat-mysql-data:

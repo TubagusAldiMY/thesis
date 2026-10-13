@@ -1,0 +1,18 @@
+# Rahasia lokal
+.env
+
+# Catatan belajar pribadi (juga dikecualikan lewat .git/info/exclude)
+docs/penjelasan/
+
+# Hasil build / editor
+backend/bin/
+.idea/
+
+# Frontend
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.env
+
+# Duplikat folder PNG desain
+Design/*.zip
