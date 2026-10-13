@@ -104,7 +104,7 @@ Semua endpoint kecuali login butuh cookie sesi; peran dicek di middleware (deny-
 | Method + Path | Peran | Validasi utama | Aksi / Query | Response sukses |
 |---|---|---|---|---|
 | `POST /auth/login` | publik | username & password wajib; 5 gagal/15 mnt per username+IP → terkunci | cari user (username tak ada pun menambah hitungan & dibalas sama), verifikasi Argon2id, insert `sessions`, set cookie | 200 `{user}`; 401 `{error, sisa_percobaan}`; 429 + `retry_after` bila terkunci |
-| `GET /dashboard` | admin, ketua | – | hitung mustahik aktif per asnaf, periode berjalan, dana & total tersalur periode aktif, `langkah_aktif` (1–5), 5 periode terbaru | 200 |
+| `GET /dashboard` | admin, ketua | – | hitung mustahik aktif per asnaf, periode berjalan, dana & total tersalur periode aktif, total tersalur semua periode (dipakai kartu bila tidak ada periode aktif), `langkah_aktif` (1–5), 5 periode terbaru | 200 |
 | `POST /auth/logout` | semua | – | hapus baris `sessions` | 204 |
 | `GET /auth/me` | semua | – | join sesi→user | 200 `{id,nama,role}` |
 | `PUT /auth/password` | semua | password lama benar; baru ≥ 12 karakter & ≠ lama; rate limit sama dengan login | verifikasi Argon2id lama, hash baru, UPDATE `users`, hapus semua `sessions` user kecuali sesi saat ini + audit | 204; 422 bila lama salah/baru lemah |

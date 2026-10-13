@@ -109,7 +109,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `POST /auth/logout` | semua | – | delete `sessions` | 204 |
 | `GET /auth/me` | semua | – | join sessions→users | 200 `{id,username,nama,role}` |
 | `PUT /auth/password` | semua | lama benar, baru ≥ 12 & ≠ lama, kunci 5 gagal | update hash, hapus sesi lain | 204 → 422, 429 |
-| `GET /dashboard` | semua | – | jumlah per asnaf, periode berjalan, stepper | 200 |
+| `GET /dashboard` | semua | – | jumlah per asnaf, periode berjalan, stepper, `total_tersalur_semua` (SUM penyaluran semua periode) | 200 |
 | `GET /mustahik?q&asnaf&aktif&page&per_page` | admin | q ≤ 100, asnaf sah | SELECT + paging + `asnaf_counts` | 200 `{items,total,asnaf_counts}` |
 | `POST /mustahik` | admin | nama 2–100, NIK 16 digit unik, HP opsional, alamat 5–500, asnaf | enkripsi + INSERT, audit | 201 → 422 |
 | `GET/PUT /mustahik/{id}` | admin | sama; NIK/HP kosong = tetap | UPDATE (nonaktif, bukan hapus) | 200 → 404, 409, 422 |

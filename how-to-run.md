@@ -43,7 +43,7 @@ Semua perintah di bawah dijalankan dari folder `App`, kecuali disebut lain.
 
 ```bash
 pw=$(openssl rand -hex 16)
-printf 'MYSQL_ROOT_PASSWORD=%s\nMYSQL_PORT=33070\nDATABASE_URL=root:%s@tcp(127.0.0.1:33070)/spkzakat\nTEST_DATABASE_URL=root:%s@tcp(127.0.0.1:33070)/\n' "$pw" "$pw" "$pw" > .env
+printf "MYSQL_ROOT_PASSWORD=%s\nMYSQL_PORT=33070\nDATABASE_URL='root:%s@tcp(127.0.0.1:33070)/spkzakat'\nTEST_DATABASE_URL='root:%s@tcp(127.0.0.1:33070)/'\n" "$pw" "$pw" "$pw" > .env
 printf 'NIK_ENCRYPTION_KEY=%s\nNIK_HMAC_KEY=%s\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" >> .env
 printf 'ADDR=127.0.0.1:8090\nCOOKIE_SECURE=false\nDEMO_PASSWORD=%s\n' "$(openssl rand -hex 12)" >> .env
 chmod 600 .env
@@ -200,6 +200,7 @@ Ringkas (satu server masjid / VPS kecil):
 |--------|-------------------|
 | `go: command not found` | Go belum terpasang / belum di `PATH`. Pasang dari <https://go.dev/dl/>. |
 | `go.mod requires go >= 1.2x` atau Go mengunduh toolchain | Project dikunci ke Go 1.23. Jangan `go get ...@latest`; pakai `GOTOOLCHAIN=local` dan kembalikan `go 1.23` di `go.mod`. |
+| `syntax error near unexpected token '('` saat `. ./.env` (bash) | Nilai `DATABASE_URL`/`TEST_DATABASE_URL` belum diberi tanda kutip tunggal. Ubah jadi `DATABASE_URL='root:…@tcp(127.0.0.1:33070)/spkzakat'` (zsh menerima tanpa kutip, bash tidak). |
 | `required variable MYSQL_ROOT_PASSWORD is missing` | `.env` belum dibuat atau compose dijalankan tanpa `--env-file .env`. |
 | `bind: address already in use` pada 33070 | Ubah `MYSQL_PORT` di `.env` (dan DSN), lalu `docker compose --env-file .env up -d mysql`. |
 | Server: `listen tcp 127.0.0.1:8090: bind: address already in use` | Port dipakai proses lain (cek `ss -ltnp \| grep 8090`). Ubah `ADDR` di `.env` **dan** `API_URL` frontend. |
