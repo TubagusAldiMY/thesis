@@ -20,7 +20,9 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `docs/` | Dokumen rancangan 01–04 |
 | `docs/penjelasan/` | Catatan belajar per pekerjaan (pribadi, **tidak di-commit**) |
 | `Design/` | Mockup UI (HTML, PDF, PNG) — acuan visual |
-| `docker-compose.yml` | MySQL 8 khusus project (`127.0.0.1:33070`) |
+| `docker-compose.yml` | Tiga service, semua `restart: unless-stopped`: `mysql` (`127.0.0.1:33070`), `api` (Go, hanya di jaringan compose, DSN ke host `mysql`), `web` (SvelteKit, `127.0.0.1:3101`) |
+| `backend/Dockerfile` | Build statis `server`+`migrate`+`useradmin` → image alpine non-root; start = `migrate` lalu `server` |
+| `frontend/Dockerfile` | Build SvelteKit (adapter-node) → image node non-root, `node build` |
 | `.env.example` | Variabel backend; `frontend/.env.example` untuk frontend |
 | `scripts/seed-demo.sh` | Data contoh dokumen 02 untuk demo sidang (lewat API) |
 | **Backend** `backend/` | Modul Go `spkzakat` (Go 1.23) |

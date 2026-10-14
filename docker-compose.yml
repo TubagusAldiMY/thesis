@@ -1,3 +1,8 @@
+# Seluruh aplikasi SPK Zakat: MySQL + Go API + frontend SvelteKit.
+#   docker compose --env-file .env up -d --build
+# Buka http://localhost:3101 (hanya 127.0.0.1). Semua service hidup lagi otomatis
+# setelah laptop dinyalakan (restart: unless-stopped + service Docker aktif saat boot).
+#
 # MySQL khusus project ini (development & test integrasi).
 # Port diikat ke 127.0.0.1 supaya tidak terbuka ke jaringan.
 # Container lain di mesin ini (mis. payment_mysql di 3307) tidak disentuh.
@@ -21,6 +26,49 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  # Go API: hanya terjangkau dari jaringan compose (tanpa `ports`), karena API
+  # mempercayai X-Real-IP dari SvelteKit. DSN memakai host `mysql` (nama service),
+  # BUKAN DATABASE_URL di .env yang menunjuk 127.0.0.1:33070 untuk pemakaian dari host.
+  api:
+    build: ./backend
+    container_name: spkzakat-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: root:${MYSQL_ROOT_PASSWORD}@tcp(mysql:3306)/spkzakat
+      NIK_ENCRYPTION_KEY: ${NIK_ENCRYPTION_KEY:?isi NIK_ENCRYPTION_KEY di .env}
+      NIK_HMAC_KEY: ${NIK_HMAC_KEY:?isi NIK_HMAC_KEY di .env}
+      ADDR: 0.0.0.0:8090
+      # false karena diakses lewat http://localhost; wajib true bila sudah di belakang HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: ./frontend
+    container_name: spkzakat-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: http://api:8090
+      # Harus sama persis dengan alamat yang diketik di browser (cek CSRF).
+      ORIGIN: ${WEB_ORIGIN:-http://localhost:3101}
+      PUBLIC_MASJID_NAMA: ${PUBLIC_MASJID_NAMA:-Masjid Jami Al-Barokah}
+      PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-Jl. Contoh No. 1, Kota}
+      PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-0812-0000-0000}
+    ports:
+      # 3100 sudah dipakai payment_loki (project lain) di mesin ini, jadi 3101.
+      # Ganti WEB_PORT dan WEB_ORIGIN bersamaan di .env bila ingin port lain.
+      - "127.0.0.1:${WEB_PORT:-3101}:3000"
 
 volumes:
   spkzakat-mysql-data:

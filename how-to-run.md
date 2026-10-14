@@ -6,6 +6,29 @@ Aplikasi terdiri dari tiga bagian: **MySQL** (docker), **Go API** (`backend/`, p
 Browser ──► SvelteKit :5173 ──► Go API 127.0.0.1:8090 ──► MySQL 127.0.0.1:33070
 ```
 
+## Cara tercepat: semuanya di Docker (hidup lagi otomatis setelah laptop dinyalakan)
+
+Tiga container (`spkzakat-mysql`, `spkzakat-api`, `spkzakat-web`) semuanya `restart: unless-stopped`, dan service Docker aktif saat boot, jadi setelah laptop dimatikan lalu dinyalakan lagi aplikasi menyala sendiri. Hanya perlu Docker + `.env` (lihat langkah 1 di bagian Development).
+
+```bash
+docker compose --env-file .env up -d --build
+```
+
+Buka <http://localhost:3101> (bukan `127.0.0.1`: `ORIGIN` harus sama persis dengan alamat di browser). Port 3101 dipilih karena 3100 dipakai Loki project lain di mesin ini; ganti lewat `WEB_PORT` **dan** `WEB_ORIGIN` di `.env` bila perlu. Go API hanya ada di jaringan internal compose (tidak dibuka ke host), migrasi dijalankan otomatis setiap API start.
+
+Status, log, dan akun:
+
+```bash
+docker compose --env-file .env ps
+docker compose --env-file .env logs -f api web
+docker exec -it spkzakat-api /app/useradmin buat --username admin2 --nama "Nama Lengkap" --role admin
+docker exec -it spkzakat-api /app/useradmin reset-password --username admin
+```
+
+Setelah mengubah kode: ulangi perintah `up -d --build`. Menghentikan tanpa menghapus data: `docker compose --env-file .env stop`. Jangan jalankan `go run ./cmd/server` / `npm run dev` bersamaan kecuali container `api`/`web` dihentikan dulu (port dan penghitung login berbeda).
+
+Catatan: di Docker, IP klien yang tercatat di audit log dan penguncian login adalah gateway Docker (`172.30.0.1`), bukan IP browser, karena akses datang lewat port yang dipetakan ke host. Untuk satu laptop ini tidak masalah; di server sungguhan pasang reverse proxy (lihat Production).
+
 ## Prasyarat
 | Kebutuhan | Versi | Cek |
 |-----------|-------|-----|
@@ -202,6 +225,8 @@ Ringkas (satu server masjid / VPS kecil):
 | `go.mod requires go >= 1.2x` atau Go mengunduh toolchain | Project dikunci ke Go 1.23. Jangan `go get ...@latest`; pakai `GOTOOLCHAIN=local` dan kembalikan `go 1.23` di `go.mod`. |
 | `syntax error near unexpected token '('` saat `. ./.env` (bash) | Nilai `DATABASE_URL`/`TEST_DATABASE_URL` belum diberi tanda kutip tunggal. Ubah jadi `DATABASE_URL='root:…@tcp(127.0.0.1:33070)/spkzakat'` (zsh menerima tanpa kutip, bash tidak). |
 | `required variable MYSQL_ROOT_PASSWORD is missing` | `.env` belum dibuat atau compose dijalankan tanpa `--env-file .env`. |
+| Docker: `Bind for 127.0.0.1:3101 failed: port is already allocated` | Port frontend dipakai proses/container lain (cek `ss -ltnp \| grep 3101`). Set `WEB_PORT` dan `WEB_ORIGIN` di `.env` ke port bebas, lalu `up -d`. |
+| Docker: login admin ditolak padahal password benar | Password diubah lewat `useradmin reset-password` (cek `updated_at` tabel `users`) atau akun terkunci 15 menit. Reset password, atau `docker restart spkzakat-api` untuk membersihkan penghitung. |
 | `bind: address already in use` pada 33070 | Ubah `MYSQL_PORT` di `.env` (dan DSN), lalu `docker compose --env-file .env up -d mysql`. |
 | Server: `listen tcp 127.0.0.1:8090: bind: address already in use` | Port dipakai proses lain (cek `ss -ltnp \| grep 8090`). Ubah `ADDR` di `.env` **dan** `API_URL` frontend. |
 | Server: `konfigurasi tidak valid … NIK_ENCRYPTION_KEY` | `.env` belum dimuat (`set -a && . ./.env && set +a`) atau kunci bukan 32 byte base64. |
