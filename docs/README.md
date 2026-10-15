@@ -1,6 +1,6 @@
 # Dokumen Rancangan — SPK Penyaluran Dana Zakat dan Infak Masjid (Metode ARAS)
 
-Judul skripsi: *Sistem Pendukung Keputusan Penyaluran Dana Zakat dan Infak Masjid Menggunakan Metode ARAS (Additive Ratio Assessment)*.
+Judul skripsi: *Sistem Pendukung Keputusan Penyaluran Dana Zakat dan Infak Masjid Menggunakan Metode ARAS (Additive Ratio Assessment) Berbasis Website (Studi Kasus: Masjid Jami Al-Barokah)*.
 
 **Ringkasan sistem.** Aplikasi web untuk pengurus masjid: mencatat calon penerima (mustahik), menilai mereka dengan 5 kriteria berbobot, meranking otomatis memakai ARAS, lalu memproses persetujuan Ketua DKM dan pencatatan penyaluran. Stack: **Go** (REST API) + **SvelteKit** (UI) + **MySQL 8**, monolith sederhana.
 
