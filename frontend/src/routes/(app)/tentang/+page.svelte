@@ -14,7 +14,7 @@
 		</div>
 		<p>
 			Aplikasi ini membantu pengurus masjid menentukan penerima dana zakat dan infak secara adil dan transparan.
-			Calon penerima dinilai dengan lima kriteria berbobot, lalu diranking memakai metode
+			Calon penerima dinilai dengan kriteria berbobot, lalu diranking memakai metode
 			<strong>ARAS (Additive Ratio Assessment)</strong>.
 		</p>
 		<ol class="langkah">

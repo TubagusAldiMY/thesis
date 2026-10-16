@@ -7,7 +7,7 @@
 	import { masjid } from '$lib/masjid';
 
 	const langkah = [
-		['Matriks keputusan', 'Nilai tiap calon penerima pada 5 kriteria, ditambah alternatif ideal A₀ (nilai terbaik tiap kriteria).'],
+		['Matriks keputusan', 'Nilai tiap calon penerima pada semua kriteria aktif, ditambah alternatif ideal A₀ (nilai terbaik tiap kriteria).'],
 		['Normalisasi', 'Kriteria benefit: r = x ÷ Σx. Kriteria cost dibalik dulu (1/x) lalu dinormalisasi.'],
 		['Terbobot', 'd = w × r, dengan w = bobot kriteria (Σw = 1).'],
 		['Fungsi optimalitas', 'S = Σ d pada satu baris; S₀ milik alternatif ideal.'],
@@ -40,7 +40,7 @@
 		<a class="redup" href="/">← Beranda</a>
 		<h1>Cara kerja ARAS</h1>
 		<p class="redup">
-			ARAS (Additive Ratio Assessment) meranking calon penerima dari nilai kelima kriteria mereka, dalam enam langkah.
+			ARAS (Additive Ratio Assessment) meranking calon penerima dari nilai mereka pada kriteria yang ditetapkan pengurus, dalam enam langkah.
 		</p>
 	</div>
 
@@ -55,7 +55,7 @@
 	</ol>
 
 	<section class="kartu">
-		<h2>Contoh lima kriteria dan bobot</h2>
+		<h2>Contoh kriteria dan bobot</h2>
 		<div class="tabel-wadah">
 			<table>
 				<thead><tr><th>Kode</th><th>Kriteria</th><th>Tipe</th><th class="kanan">Bobot</th></tr></thead>

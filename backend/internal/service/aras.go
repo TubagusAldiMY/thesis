@@ -135,7 +135,7 @@ func (s *Service) HitungAras(ctx context.Context, periodeID, userID string) (Has
 		for j, k := range ks {
 			kriteria[j] = aras.Kriteria{Kode: k.Kode, Tipe: aras.Tipe(k.Tipe), Bobot: k.Bobot}
 			kodeKolom[j] = k.Kode
-			bobot[j] = domain.BobotKriteria{Kode: k.Kode, Tipe: k.Tipe, Bobot: k.Bobot}
+			bobot[j] = domain.BobotKriteria{Kode: k.Kode, Nama: k.Nama, Tipe: k.Tipe, Bobot: k.Bobot}
 		}
 		alternatif := make([]aras.Alternatif, len(kandidat))
 		idBaris := make([]string, len(kandidat))

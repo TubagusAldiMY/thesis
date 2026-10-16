@@ -43,6 +43,7 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `frontend/src/lib/server/api.ts` | Satu-satunya jalur ke Go: `mentah`, `api`, `apiOpsional`, `aksi`, `wajibAdmin` |
 | `frontend/src/lib/format.ts` | Format id-ID (ribuan titik, desimal koma, dd/mm/yyyy) + label enum |
 | `frontend/src/lib/types.ts` | Tipe = bentuk JSON Go |
+| `frontend/src/lib/kriteria.ts` | `parseSkala`/`teksSkala`: mengubah skala nilai antara teks isian ("1 = sehat" per baris) dan objek; hanya memeriksa bentuk, aturan ketat dijaga Go |
 | `frontend/src/lib/salat.ts` | Jadwal salat dihitung di aplikasi (posisi matahari, parameter Kemenag RI: subuh 20°, isya 18°); fungsi murni, tanpa API luar. Diuji ke pembanding independen (selisih ≤ 1 menit). Tampil lewat `components/JadwalSalat.svelte` |
 | `frontend/src/lib/masjid.ts` | Identitas masjid dari env publik: nama, alamat, kontak, logo, foto hero, koordinat (jadwal salat) |
 | `frontend/src/routes/` | Halaman (lihat tabel rute di bawah) |
@@ -85,7 +86,7 @@ Browser ─► SvelteKit hooks.server.ts (request_id, sesi, header keamanan)
 | `auth.go` | `Login`, `Sesi`, `Logout`, `GantiPassword`, `BuatUser`, `ResetPassword` | Argon2id; pesan sama untuk username tak dikenal (dan verifikasi palsu agar waktunya sama); 5 gagal per username+IP → kunci 15 menit (`pembatas`, di memori); token 32 byte acak, yang disimpan hanya SHA-256-nya; sesi 8 jam; ganti password mencabut sesi lain |
 | `service.go` | `Catat`, `DaftarAudit`, `KategoriAudit` | Audit tanpa NIK/HP/password; kategori filter → kode aksi |
 | `mustahik.go` | Buat/ubah/ambil/daftar mustahik | NIK 16 digit, terenkripsi + HMAC duplikat; keluaran hanya tersamar; tidak bisa dinonaktifkan saat jadi kandidat periode berjalan |
-| `kriteria.go` | `DaftarKriteria`, `UbahKriteria` | Kelipatan 0,05; Σ bobot aktif = 100% atas satu paket, gagal = rollback |
+| `kriteria.go` | `DaftarKriteria`, `SimpanKriteria` (edit nama/tipe/bobot/skala/aktif + tambah kriteria baru), `UbahKriteria` (hanya tipe+bobot; dipakai tes) | Atas satu paket: bobot kelipatan 0,05, Σ bobot **aktif** = 100%, 2–10 kriteria aktif, nama unik (tanpa membedakan huruf besar-kecil), nama 3–100 huruf, skala 2–9 pilihan berkunci angka 1–9. Satu pelanggaran = rollback. Kriteria **tidak dihapus**, hanya dinonaktifkan (penilaian dan potret run menunjuk kriteria itu). Kode kriteria baru (`C6`, `C7`, …) dibuat store dan tidak berubah setelahnya |
 | `periode.go` | Buat/daftar/ambil periode, atur & daftar kandidat | Nominal ≤ dana; zakat wajib asnaf; kandidat hanya saat draft, aktif, golongan sah |
 | `penilaian.go` | `SimpanPenilaian`, `AmbilPenilaian` | Hanya draft; skala C3–C5 hanya kunci 1–4; satu sel salah membatalkan paket |
 | `aras.go` | `HitungAras`, `AmbilHasilAras`, `DaftarRun` | Dari draft/dihitung; lengkap; potret bobot + langkah disimpan; run baru = versi naik |
@@ -123,7 +124,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `POST /mustahik` | admin | nama 2–100, NIK 16 digit unik, HP opsional, alamat 5–500, asnaf | enkripsi + INSERT, audit | 201 → 422 |
 | `GET/PUT /mustahik/{id}` | admin | sama; NIK/HP kosong = tetap | UPDATE (nonaktif, bukan hapus) | 200 → 404, 409, 422 |
 | `GET /kriteria` | semua | – | SELECT urut | 200 `{items,total_persen}` |
-| `PUT /kriteria` | admin | **semua baris sekaligus**; kelipatan 0,05; Σ = 100% | UPDATE dalam satu transaksi, audit | 200 → 422 |
+| `PUT /kriteria` | admin | badan `{items:[{id,nama,tipe,bobot,skala\|null,aktif}], baru:[{nama,tipe,bobot,skala}]}`: **penuh-ganti per baris**, semua sekaligus; aturan paket seperti di `kriteria.go` (Σ aktif = 100%, 2–10 aktif, nama unik, skala sah) | UPDATE + INSERT kriteria baru dalam satu transaksi; audit `KRITERIA_UBAH` (isi: nama/tipe/bobot/aktif/jumlah pilihan skala) | 200 → 422 `fields{nama,tipe,bobot,skala,kriteria}`, 404 (ID tak ada) |
 | `GET /periode?status` | semua | status sah | SELECT + kuota | 200 `{items}` |
 | `POST /periode` | admin | nama 3–100, dana/nominal > 0, nominal ≤ dana, zakat ≥ 1 asnaf | INSERT draft, audit | 201 → 422 |
 | `GET /periode/{id}` | semua | – | periode + kuota + runs + keputusan + catatan penolakan | 200 → 404 |
@@ -159,7 +160,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | Beranda umum masjid: 4 kartu keuangan, dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
-| `/kriteria` | Ubah tipe & bobot dengan indikator total | admin ubah, ketua lihat |
+| `/kriteria` | Edit nama, tipe, bobot, skala nilai (teks "1 = sehat", satu pilihan per baris), aktif/nonaktif, dan **tambah kriteria baru**; indikator total/aturan dihitung di layar, aturan akhir dijaga Go | admin ubah, ketua lihat |
 | `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung | semua / admin |
 | `/periode/[id]/kandidat`, `/penilaian` | Centang kandidat; grid/kartu nilai + Hitung ARAS | admin |
 | `/periode/[id]/hasil` | Ranking, langkah hitung, panel keputusan, buka kembali | semua (keputusan: ketua) |

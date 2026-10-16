@@ -102,10 +102,13 @@ func TestHitungAras_ContohDokumen02_DariDataSampaiTersimpan(t *testing.T) {
 	if math.Abs(dari.Run.S0-0.2333) > 5e-5 {
 		t.Errorf("S0 = %v, mau 0,2333", dari.Run.S0)
 	}
+	// Potret kini ikut menyimpan nama (laporan lama tetap memakai nama saat dihitung).
 	want := []domain.BobotKriteria{
-		{Kode: "C1", Tipe: domain.TipeCost, Bobot: 0.30}, {Kode: "C2", Tipe: domain.TipeBenefit, Bobot: 0.20},
-		{Kode: "C3", Tipe: domain.TipeBenefit, Bobot: 0.20}, {Kode: "C4", Tipe: domain.TipeBenefit, Bobot: 0.15},
-		{Kode: "C5", Tipe: domain.TipeBenefit, Bobot: 0.15},
+		{Kode: "C1", Nama: "Penghasilan per bulan", Tipe: domain.TipeCost, Bobot: 0.30},
+		{Kode: "C2", Nama: "Jumlah tanggungan", Tipe: domain.TipeBenefit, Bobot: 0.20},
+		{Kode: "C3", Nama: "Kondisi tempat tinggal", Tipe: domain.TipeBenefit, Bobot: 0.20},
+		{Kode: "C4", Nama: "Kondisi kesehatan / disabilitas", Tipe: domain.TipeBenefit, Bobot: 0.15},
+		{Kode: "C5", Nama: "Status pekerjaan", Tipe: domain.TipeBenefit, Bobot: 0.15},
 	}
 	if !reflect.DeepEqual(dari.Run.Bobot, want) {
 		t.Errorf("potret bobot = %+v", dari.Run.Bobot)

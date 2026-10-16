@@ -29,7 +29,7 @@
 		</div>
 		<div class="slogan">
 			<h1>Penyaluran zakat & infak yang adil dan bisa dipertanggungjawabkan.</h1>
-			<p>Calon penerima dinilai dengan 5 kriteria berbobot dan diranking otomatis memakai metode ARAS, lalu disetujui Ketua DKM.</p>
+			<p>Calon penerima dinilai dengan kriteria berbobot dan diranking otomatis memakai metode ARAS, lalu disetujui Ketua DKM.</p>
 		</div>
 		<small class="kaki">Metode ARAS · Additive Ratio Assessment</small>
 	</section>

@@ -302,7 +302,13 @@ func (s *Service) AmbilLaporan(ctx context.Context, periodeID string) (Laporan, 
 		Penyaluran: []BarisPenyaluran{}, TotalTersalur: rek.TotalTersalur, DibuatPada: time.Now().UTC(),
 	}
 	for _, b := range hasil.Run.Bobot {
-		l.Kriteria = append(l.Kriteria, KriteriaLaporan{Kode: b.Kode, Nama: nama[b.Kode], Tipe: b.Tipe, Bobot: b.Bobot})
+		// Nama dari potret run (nama saat dihitung); run lama belum menyimpannya,
+		// jadi jatuh ke nama kriteria saat ini.
+		nm := b.Nama
+		if nm == "" {
+			nm = nama[b.Kode]
+		}
+		l.Kriteria = append(l.Kriteria, KriteriaLaporan{Kode: b.Kode, Nama: nm, Tipe: b.Tipe, Bobot: b.Bobot})
 	}
 	for _, b := range rek.Baris {
 		if b.Penyaluran != nil {

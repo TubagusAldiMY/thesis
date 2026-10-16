@@ -139,3 +139,66 @@ func TestGetKriteria_TidakAdaDanTerhapus(t *testing.T) {
 		t.Errorf("List memuat kriteria terhapus: %d", len(lst))
 	}
 }
+
+func TestCreateKriteria_DanUpdateKriteriaPenuh(t *testing.T) {
+	s := newStore(t)
+
+	k6, err := s.CreateKriteria(bg, "Jumlah anak sekolah", domain.TipeBenefit, 0.10, map[string]string{"1": "sedikit", "2": "banyak"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if k6.Kode != "C6" || k6.Urutan != 6 || !k6.Aktif || k6.Nama != "Jumlah anak sekolah" || math.Abs(k6.Bobot-0.10) > 1e-9 ||
+		k6.Skala["1"] != "sedikit" || k6.Skala["2"] != "banyak" {
+		t.Errorf("kriteria baru = %+v", k6)
+	}
+	k7, err := s.CreateKriteria(bg, "Beban utang", domain.TipeCost, 0.05, nil) // nil = bernilai asli
+	if err != nil {
+		t.Fatal(err)
+	}
+	if k7.Kode != "C7" || k7.Urutan != 7 || k7.Skala != nil {
+		t.Errorf("kriteria kedua = %+v, mau C7 urutan 7 tanpa skala", k7)
+	}
+
+	// Penuh-ganti: nama, tipe, bobot, skala dihapus, nonaktif. Kode dan urutan tetap.
+	if err := s.UpdateKriteriaPenuh(bg, k6.ID, "Anak usia sekolah", domain.TipeCost, 0.15, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.GetKriteria(bg, k6.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Kode != "C6" || got.Urutan != 6 || got.Nama != "Anak usia sekolah" || got.Tipe != domain.TipeCost ||
+		math.Abs(got.Bobot-0.15) > 1e-9 || got.Skala != nil || got.Aktif {
+		t.Errorf("sesudah ubah = %+v", got)
+	}
+	if aktif, _ := s.ListKriteria(bg, true); len(aktif) != 6 { // C1..C5 + C7; C6 nonaktif
+		t.Errorf("kriteria aktif = %d, mau 6", len(aktif))
+	}
+
+	// Isian yang sama persis tetap dianggap berhasil (ClientFoundRows), bukan "tidak ketemu".
+	if err := s.UpdateKriteriaPenuh(bg, k6.ID, "Anak usia sekolah", domain.TipeCost, 0.15, nil, false); err != nil {
+		t.Errorf("ubah tanpa perubahan nilai: %v", err)
+	}
+	if err := s.UpdateKriteriaPenuh(bg, "00000000-0000-4000-8000-000000000000", "Hantu", domain.TipeCost, 0.15, nil, true); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("ID tak ada: err = %v, mau ErrNotFound", err)
+	}
+}
+
+// UNIQUE(kode) berlaku atas semua baris, jadi kode kriteria yang sudah dihapus tidak dipakai ulang.
+func TestCreateKriteria_KodeTidakDipakaiUlangSetelahTerhapus(t *testing.T) {
+	s := newStore(t)
+	k6, err := s.CreateKriteria(bg, "Sementara", domain.TipeBenefit, 0.05, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(bg, `UPDATE kriteria SET deleted_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, k6.ID); err != nil {
+		t.Fatal(err)
+	}
+	k, err := s.CreateKriteria(bg, "Pengganti", domain.TipeBenefit, 0.05, nil)
+	if err != nil {
+		t.Fatalf("membuat setelah ada yang terhapus: %v", err)
+	}
+	if k.Kode != "C7" {
+		t.Errorf("kode = %s, mau C7 (C6 pernah dipakai)", k.Kode)
+	}
+}

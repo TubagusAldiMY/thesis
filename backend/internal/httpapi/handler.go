@@ -188,30 +188,50 @@ func (a *API) daftarKriteria(w http.ResponseWriter, r *http.Request) {
 	a.tulisJSON(w, http.StatusOK, k)
 }
 
-// ubahKriteria menerima SEMUA perubahan sekaligus karena syarat Σ bobot = 100%
-// hanya bisa diperiksa atas satu paket utuh.
+// ubahKriteria menerima SEMUA perubahan dan penambahan sekaligus karena syarat
+// Σ bobot = 100% (dan jumlah kriteria aktif, nama unik) hanya bisa diperiksa atas
+// satu paket utuh. Tiap item selalu berisi semua kolom (penuh-ganti): nama, tipe,
+// bobot, skala (null = nilai asli), dan aktif.
 func (a *API) ubahKriteria(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Items []struct {
 			ID    string              `json:"id"`
+			Nama  string              `json:"nama"`
 			Tipe  domain.TipeKriteria `json:"tipe"`
 			Bobot float64             `json:"bobot"`
+			Skala map[string]string   `json:"skala"`
+			Aktif bool                `json:"aktif"`
 		} `json:"items"`
+		Baru []struct {
+			Nama  string              `json:"nama"`
+			Tipe  domain.TipeKriteria `json:"tipe"`
+			Bobot float64             `json:"bobot"`
+			Skala map[string]string   `json:"skala"`
+		} `json:"baru"`
 	}
 	if !a.bacaJSON(w, r, &in) {
 		return
 	}
-	ubah := make([]service.KriteriaUbah, len(in.Items))
-	detail := map[string]any{}
-	for i, it := range in.Items {
-		ubah[i] = service.KriteriaUbah{ID: it.ID, Tipe: it.Tipe, Bobot: it.Bobot}
-		detail[it.ID] = map[string]any{"tipe": it.Tipe, "bobot": it.Bobot}
+	simpan := service.KriteriaSimpan{
+		Ubah: make([]service.KriteriaEdit, len(in.Items)),
+		Baru: make([]service.KriteriaBaru, len(in.Baru)),
 	}
-	if err := a.svc.UbahKriteria(r.Context(), ubah); err != nil {
+	// Detail audit: apa yang dikirim Admin (nama kriteria bukan data pribadi).
+	ubahLog := map[string]any{}
+	for i, it := range in.Items {
+		simpan.Ubah[i] = service.KriteriaEdit{ID: it.ID, Nama: it.Nama, Tipe: it.Tipe, Bobot: it.Bobot, Skala: it.Skala, Aktif: it.Aktif}
+		ubahLog[it.ID] = map[string]any{"nama": it.Nama, "tipe": it.Tipe, "bobot": it.Bobot, "aktif": it.Aktif, "pilihan_skala": len(it.Skala)}
+	}
+	baruLog := make([]map[string]any, len(in.Baru))
+	for i, b := range in.Baru {
+		simpan.Baru[i] = service.KriteriaBaru{Nama: b.Nama, Tipe: b.Tipe, Bobot: b.Bobot, Skala: b.Skala}
+		baruLog[i] = map[string]any{"nama": b.Nama, "tipe": b.Tipe, "bobot": b.Bobot, "pilihan_skala": len(b.Skala)}
+	}
+	if err := a.svc.SimpanKriteria(r.Context(), simpan); err != nil {
 		a.gagal(w, r, err)
 		return
 	}
-	a.catat(r, domain.AksiKriteriaUbah, "kriteria", "", detail)
+	a.catat(r, domain.AksiKriteriaUbah, "kriteria", "", map[string]any{"ubah": ubahLog, "baru": baruLog})
 	a.daftarKriteria(w, r)
 }
 

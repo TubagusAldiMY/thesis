@@ -14,8 +14,8 @@ import (
 
 // Batas nilai untuk kriteria TANPA skala (mis. penghasilan, jumlah tanggungan).
 // Minimal 1 karena paket aras tidak menerima nilai ≤ 0 (cost dibagi 0); UI
-// sudah merancang "isi 1 bila tidak berpenghasilan". Kriteria BERSKALA
-// (C3–C5) hanya menerima kunci skalanya (1–4).
+// sudah merancang "isi 1 bila tidak berpenghasilan". Kriteria BERSKALA (yang
+// Admin beri skala di halaman Kriteria) hanya menerima kunci skalanya.
 const (
 	nilaiMin  = 1.0
 	nilaiMaks = 9_999_999_999.0

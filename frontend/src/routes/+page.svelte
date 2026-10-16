@@ -168,7 +168,8 @@
 					{/each}
 				</ol>
 				<div class="kriteria">
-					<h3>Kriteria penilaian</h3>
+					<h3>Contoh kriteria penilaian</h3>
+					<p class="redup">Pengurus dapat menyesuaikan kriteria dan bobotnya.</p>
 					<ul>
 						{#each kriteria as k (k)}<li>{k}</li>{/each}
 					</ul>

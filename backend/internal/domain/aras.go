@@ -22,7 +22,11 @@ type Penilaian struct {
 // run (aras_run.bobot_snapshot) supaya hasil lama tetap bisa dijelaskan
 // walau bobot kriteria diubah kemudian.
 type BobotKriteria struct {
-	Kode  string       `json:"kode"`
+	Kode string `json:"kode"`
+	// Nama ikut dipotret supaya laporan lama tetap memakai nama saat itu bila kriteria
+	// diganti namanya. Kosong pada run lama (sebelum nama bisa diedit): laporan jatuh
+	// ke nama kriteria saat ini.
+	Nama  string       `json:"nama,omitempty"`
 	Tipe  TipeKriteria `json:"tipe"`
 	Bobot float64      `json:"bobot"`
 }

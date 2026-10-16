@@ -76,6 +76,75 @@ func (s *Store) GetKriteria(ctx context.Context, id string) (domain.Kriteria, er
 	return k, nil
 }
 
+// skalaJSON mengubah skala menjadi JSON untuk kolom skala_keterangan; skala
+// kosong/nil disimpan sebagai NULL (= kriteria bernilai asli, bukan berskala).
+func skalaJSON(skala map[string]string) (any, error) {
+	if len(skala) == 0 {
+		return nil, nil
+	}
+	b, err := json.Marshal(skala)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+// UpdateKriteriaPenuh mengganti nama, tipe, bobot, skala, dan status aktif satu
+// kriteria (kode dan urutan tidak berubah: kode dipakai sebagai kunci penilaian
+// dan potret run). Seperti UpdateKriteria, aturan lintas-kriteria (Σ bobot,
+// jumlah aktif, nama unik) ada di service, dalam transaksi yang sama.
+func (s *Store) UpdateKriteriaPenuh(ctx context.Context, id, nama string, tipe domain.TipeKriteria, bobot float64, skala map[string]string, aktif bool) error {
+	sk, err := skalaJSON(skala)
+	if err != nil {
+		return fmt.Errorf("store.UpdateKriteriaPenuh: skala: %w", err)
+	}
+	res, err := s.q.ExecContext(ctx,
+		`UPDATE kriteria SET nama = ?, tipe = ?, bobot = ?, skala_keterangan = ?, is_active = ?
+		  WHERE id = ? AND deleted_at IS NULL`,
+		nama, string(tipe), strconv.FormatFloat(bobot, 'f', 4, 64), sk, aktif, id)
+	if err != nil {
+		return fmt.Errorf("store.UpdateKriteriaPenuh: %w", mapErr(err))
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("store.UpdateKriteriaPenuh: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("store.UpdateKriteriaPenuh %s: %w", id, domain.ErrNotFound)
+	}
+	return nil
+}
+
+// CreateKriteria menambah kriteria aktif di urutan terakhir. Kode berikutnya
+// ("C6", "C7", ...) dihitung dari kode terbesar, TERMASUK baris terhapus, karena
+// UNIQUE(kode) berlaku atas semua baris. Panggil di dalam WithTx.
+func (s *Store) CreateKriteria(ctx context.Context, nama string, tipe domain.TipeKriteria, bobot float64, skala map[string]string) (domain.Kriteria, error) {
+	var nx struct {
+		Nomor  int `db:"nomor"`
+		Urutan int `db:"urutan"`
+	}
+	err := sqlx.GetContext(ctx, s.q, &nx,
+		`SELECT COALESCE(MAX(CAST(SUBSTRING(kode, 2) AS UNSIGNED)), 0) + 1 AS nomor,
+		        COALESCE(MAX(urutan), 0) + 1 AS urutan
+		   FROM kriteria`)
+	if err != nil {
+		return domain.Kriteria{}, fmt.Errorf("store.CreateKriteria: kode berikutnya: %w", mapErr(err))
+	}
+	sk, err := skalaJSON(skala)
+	if err != nil {
+		return domain.Kriteria{}, fmt.Errorf("store.CreateKriteria: skala: %w", err)
+	}
+	id := newID()
+	_, err = s.q.ExecContext(ctx,
+		`INSERT INTO kriteria (id, kode, nama, tipe, bobot, skala_keterangan, urutan, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
+		id, "C"+strconv.Itoa(nx.Nomor), nama, string(tipe), strconv.FormatFloat(bobot, 'f', 4, 64), sk, nx.Urutan)
+	if err != nil {
+		return domain.Kriteria{}, fmt.Errorf("store.CreateKriteria: %w", mapErr(err))
+	}
+	return s.GetKriteria(ctx, id)
+}
+
 // UpdateKriteria mengubah tipe dan bobot. Aturan "Σ bobot = 100%" ada di
 // service (butuh melihat semua kriteria); panggil di dalam WithTx supaya
 // pembacaan dan penulisan konsisten.

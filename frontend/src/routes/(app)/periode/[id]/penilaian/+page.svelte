@@ -65,7 +65,10 @@
 	<div class="kartu-kepala">
 		<div>
 			<h2>Nilai tiap kandidat</h2>
-			<p class="redup">Penghasilan dalam rupiah (isi 1 bila tidak berpenghasilan). C3–C5 memakai skala 1–4.</p>
+			<p class="redup">
+				Kriteria berskala dipilih dengan tombol (arti tiap angka ada di bawah tabel). Kriteria bernilai angka diisi apa adanya,
+				minimal 1 (isi 1 bila tidak ada, mis. tidak berpenghasilan).
+			</p>
 		</div>
 		<span class="badge {semuaLengkap ? 'hijau' : 'kuning'}">Lengkap: {lengkap}/{m.total} kandidat</span>
 	</div>
