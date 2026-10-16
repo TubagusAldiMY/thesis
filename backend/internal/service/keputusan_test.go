@@ -157,6 +157,9 @@ func TestPenyaluran_AturanLaluTutupDanLaporan(t *testing.T) {
 		// Periode contoh berjenis zakat; belum ada donasi diterima, jadi saldo negatif.
 		t.Fatalf("keuangan setelah tutup: %+v", k)
 	}
+	if r, err := c.e.svc.AmbilRingkasanPublik(bg); err != nil || r.TotalTersalur != 3_000_000 || r.PenerimaManfaat != 3 {
+		t.Fatalf("ringkasan publik setelah tutup: %+v, %v; mau tersalur 3000000 dan 3 penerima", r, err)
+	}
 
 	l, err := c.e.svc.AmbilLaporan(bg, c.periode.ID)
 	if err != nil {

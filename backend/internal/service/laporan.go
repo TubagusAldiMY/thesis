@@ -144,6 +144,50 @@ func (s *Service) ambilKeuangan(ctx context.Context) (Keuangan, error) {
 	return k, nil
 }
 
+// RingkasanPublik = angka transparansi untuk landing (tanpa login). HANYA
+// agregat: tidak ada nama donatur, nama mustahik, atau data pribadi apa pun.
+type RingkasanPublik struct {
+	ZakatDiterima   int64 `json:"zakat_diterima"`
+	InfakDiterima   int64 `json:"infak_diterima"`
+	TotalDiterima   int64 `json:"total_diterima"`
+	TotalTersalur   int64 `json:"total_tersalur"`
+	JumlahDonasi    int   `json:"jumlah_donasi"`
+	PenerimaManfaat int   `json:"penerima_manfaat"`
+}
+
+// AmbilRingkasanPublik menyusun RingkasanPublik. Hanya donasi berstatus
+// diterima yang dihitung (yang dibatalkan/menunggu tidak).
+func (s *Service) AmbilRingkasanPublik(ctx context.Context) (RingkasanPublik, error) {
+	gagal := func(err error) (RingkasanPublik, error) {
+		return RingkasanPublik{}, fmt.Errorf("service.AmbilRingkasanPublik: %w", err)
+	}
+	terima, err := s.st.PenerimaanPerJenis(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	salur, err := s.st.PenyaluranPerJenis(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	ringkas, err := s.st.RingkasDonasi(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	penerima, err := s.st.JumlahPenerimaManfaat(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	r := RingkasanPublik{
+		ZakatDiterima:   terima[domain.DonasiZakatFitrah] + terima[domain.DonasiZakatMal] + terima[domain.DonasiZakatProfesi],
+		InfakDiterima:   terima[domain.DonasiInfak],
+		TotalTersalur:   salur[domain.JenisZakat] + salur[domain.JenisInfak],
+		JumlahDonasi:    ringkas.JumlahDiterima,
+		PenerimaManfaat: penerima,
+	}
+	r.TotalDiterima = r.ZakatDiterima + r.InfakDiterima
+	return r, nil
+}
+
 // langkahAktif menentukan posisi stepper dari data periode.
 func langkahAktif(p domain.Periode, kandidat, lengkap int) int {
 	switch {

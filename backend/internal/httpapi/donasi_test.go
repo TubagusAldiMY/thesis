@@ -287,6 +287,50 @@ func TestDonasi_HakAkses(t *testing.T) {
 	admin.minta("POST", "/api/donasi/"+v.ID+"/batal", map[string]string{"alasan": "dua kali"}, 409, nil)
 }
 
+// Landing publik menampilkan angka transparansi tanpa login. Yang dijaga: hanya
+// enam angka agregat, dan nama/No. HP donatur tidak pernah ikut keluar.
+func TestRingkasanPublik_TanpaLoginTanpaDataPribadi(t *testing.T) {
+	srv, _, _ := siapkanServerGerbang(t, false)
+	anon := klienBaru(t, srv)
+	kunci := []string{"infak_diterima", "jumlah_donasi", "penerima_manfaat", "total_diterima", "total_tersalur", "zakat_diterima"}
+
+	// periksa memastikan bentuknya tepat enam kunci dan SEMUA nilainya angka:
+	// dengan begitu nama atau No. HP (string) mustahil ikut keluar.
+	periksa := func(r map[string]any) {
+		t.Helper()
+		if len(r) != len(kunci) {
+			t.Fatalf("kunci = %v, mau tepat %v", r, kunci)
+		}
+		for _, k := range kunci {
+			if _, angka := r[k].(float64); !angka {
+				t.Errorf("%s = %#v, mau angka", k, r[k])
+			}
+		}
+	}
+
+	var r map[string]any
+	anon.minta("GET", "/api/publik/ringkasan", nil, 200, &r)
+	periksa(r)
+	for _, k := range kunci {
+		if r[k] != float64(0) {
+			t.Errorf("%s = %v, mau 0 pada database kosong", k, r[k])
+		}
+	}
+
+	admin := klienBaru(t, srv)
+	admin.login("admin")
+	admin.minta("POST", "/api/donasi", map[string]any{
+		"nama": "Pak Haji Rahasia", "no_hp": "081234567890", "jenis": "zakat_mal", "jumlah": 200000, "metode": "tunai",
+	}, 201, nil)
+
+	r = nil
+	anon.minta("GET", "/api/publik/ringkasan", nil, 200, &r)
+	periksa(r)
+	if r["zakat_diterima"] != float64(200000) || r["total_diterima"] != float64(200000) || r["jumlah_donasi"] != float64(1) {
+		t.Errorf("setelah satu donasi = %v", r)
+	}
+}
+
 func TestDonasi_Aktif(t *testing.T) {
 	for _, gerbang := range []bool{true, false} {
 		srv, _, _ := siapkanServerGerbang(t, gerbang)

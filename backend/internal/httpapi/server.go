@@ -116,6 +116,8 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	// service, dan kode rahasia 128 bit untuk akses ke satu donasi. Notifikasi
 	// gateway dijaga tanda tangan SHA512, bukan sesi.
 	mux.HandleFunc("GET /api/publik/donasi-aktif", a.donasiAktif)
+	// Angka transparansi landing: agregat saja, tanpa nama/HP siapa pun.
+	mux.Handle("GET /api/publik/ringkasan", a.batasi(a.batasBaca, a.ringkasanPublik))
 	mux.Handle("POST /api/publik/donasi", a.batasi(a.batasBuat, a.buatDonasiWeb))
 	mux.Handle("GET /api/publik/donasi/{kode}", a.batasi(a.batasBaca, a.donasiPublik))
 	mux.HandleFunc("POST /api/publik/midtrans/notifikasi", a.notifikasiGerbang)

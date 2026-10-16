@@ -62,6 +62,20 @@ func (s *Store) PenyaluranPerJenis(ctx context.Context) (map[domain.JenisPeriode
 	return hasil, nil
 }
 
+// JumlahPenerimaManfaat = banyaknya mustahik berbeda yang pernah menerima
+// penyaluran (satu orang yang menerima di dua periode dihitung sekali).
+func (s *Store) JumlahPenerimaManfaat(ctx context.Context) (int, error) {
+	var n int
+	err := sqlx.GetContext(ctx, s.q, &n,
+		`SELECT COUNT(DISTINCT py.mustahik_id)
+		   FROM penyaluran py JOIN periode p ON p.id = py.periode_id
+		  WHERE p.deleted_at IS NULL`)
+	if err != nil {
+		return 0, fmt.Errorf("store.JumlahPenerimaManfaat: %w", mapErr(err))
+	}
+	return n, nil
+}
+
 // PenerimaanPerBulan = donasi diterima per bulan kalender WIB ("2026-10"),
 // mulai bulan `dari` ("2026-01") sampai sekarang. dibayar_pada disimpan UTC,
 // jadi digeser +7 jam supaya donasi pukul 23.30 WIB masuk bulan yang benar.

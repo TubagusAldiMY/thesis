@@ -20,6 +20,17 @@ func (a *API) donasiAktif(w http.ResponseWriter, _ *http.Request) {
 	a.tulisJSON(w, http.StatusOK, map[string]bool{"aktif": a.svc.DonasiWebAktif()})
 }
 
+// ringkasanPublik membalas angka transparansi untuk landing (tanpa login):
+// total terkumpul, tersalur, jumlah donasi, dan penerima manfaat. Hanya agregat.
+func (a *API) ringkasanPublik(w http.ResponseWriter, r *http.Request) {
+	s, err := a.svc.AmbilRingkasanPublik(r.Context())
+	if err != nil {
+		a.gagal(w, r, err)
+		return
+	}
+	a.tulisJSON(w, http.StatusOK, s)
+}
+
 // buatDonasiWeb menerima isian muzaki dari halaman publik, membuat donasi
 // berstatus menunggu + transaksi di gateway, dan membalas tautan halaman bayar.
 func (a *API) buatDonasiWeb(w http.ResponseWriter, r *http.Request) {

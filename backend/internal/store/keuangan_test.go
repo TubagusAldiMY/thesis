@@ -19,9 +19,16 @@ func diterimaPada(t *testing.T, s *Store, jenis domain.JenisDonasi, jumlah int64
 }
 
 // salurkan mencatat satu penyaluran Rp nominal untuk mustahik baru pada periode p.
-func salurkan(t *testing.T, s *Store, p domain.Periode, nama string, nominal int64, tanggal time.Time) {
+func salurkan(t *testing.T, s *Store, p domain.Periode, nama string, nominal int64, tanggal time.Time) domain.Mustahik {
 	t.Helper()
 	m := buatMustahik(t, s, nama, domain.AsnafFakir)
+	salurkanKe(t, s, p, m, nominal, tanggal)
+	return m
+}
+
+// salurkanKe mencatat penyaluran untuk mustahik yang sudah ada.
+func salurkanKe(t *testing.T, s *Store, p domain.Periode, m domain.Mustahik, nominal int64, tanggal time.Time) {
+	t.Helper()
 	err := s.CreatePenyaluran(bg, &domain.Penyaluran{
 		PeriodeID: p.ID, MustahikID: m.ID, Nominal: nominal, Tanggal: tanggal, DicatatOleh: p.CreatedBy,
 	})
@@ -64,9 +71,10 @@ func TestKeuangan_Agregat(t *testing.T) {
 	if err := s.CreatePeriode(bg, &infak); err != nil {
 		t.Fatal(err)
 	}
-	salurkan(t, s, zakat, "Ahmad", 1_000_000, utc(2026, 10, 15, 0, 0))
+	ahmad := salurkan(t, s, zakat, "Ahmad", 1_000_000, utc(2026, 10, 15, 0, 0))
 	salurkan(t, s, zakat, "Budi", 1_000_000, utc(2026, 10, 15, 0, 0))
 	salurkan(t, s, infak, "Cici", 500_000, utc(2026, 9, 10, 0, 0))
+	salurkanKe(t, s, infak, ahmad, 500_000, utc(2026, 9, 12, 0, 0)) // Ahmad menerima lagi dari periode infak
 
 	t.Run("penerimaan per jenis", func(t *testing.T) {
 		got, err := s.PenerimaanPerJenis(bg)
@@ -77,7 +85,7 @@ func TestKeuangan_Agregat(t *testing.T) {
 	})
 	t.Run("penyaluran per jenis", func(t *testing.T) {
 		got, err := s.PenyaluranPerJenis(bg)
-		want := map[domain.JenisPeriode]int64{domain.JenisZakat: 2_000_000, domain.JenisInfak: 500_000}
+		want := map[domain.JenisPeriode]int64{domain.JenisZakat: 2_000_000, domain.JenisInfak: 1_000_000}
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Errorf("= %v, %v; mau %v", got, err, want)
 		}
@@ -96,8 +104,14 @@ func TestKeuangan_Agregat(t *testing.T) {
 			t.Errorf("dari 2026-10 = %v, %v; mau %v", got, err, want)
 		}
 		got, _ = s.PenyaluranPerBulan(bg, "2026-09")
-		if got["2026-09"] != 500_000 || got["2026-10"] != 2_000_000 {
+		if got["2026-09"] != 1_000_000 || got["2026-10"] != 2_000_000 {
 			t.Errorf("dari 2026-09 = %v", got)
+		}
+	})
+	t.Run("penerima manfaat dihitung per orang, bukan per penyaluran", func(t *testing.T) {
+		// 4 baris penyaluran, tetapi Ahmad menerima dua kali → 3 orang berbeda.
+		if n, err := s.JumlahPenerimaManfaat(bg); err != nil || n != 3 {
+			t.Errorf("= %d, %v; mau 3", n, err)
 		}
 	})
 }

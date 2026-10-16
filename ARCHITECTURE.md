@@ -88,7 +88,7 @@ Browser ─► SvelteKit hooks.server.ts (request_id, sesi, header keamanan)
 | `penilaian.go` | `SimpanPenilaian`, `AmbilPenilaian` | Hanya draft; skala C3–C5 hanya kunci 1–4; satu sel salah membatalkan paket |
 | `aras.go` | `HitungAras`, `AmbilHasilAras`, `DaftarRun` | Dari draft/dihitung; lengkap; potret bobot + langkah disimpan; run baru = versi naik |
 | `keputusan.go` | `AmbilDetailPeriode`, `Putuskan`, `BukaKembali`, `CatatPenyaluran`, `DaftarPenyaluran`, `TutupPeriode` | Keputusan hanya saat dihitung, catatan wajib bila tolak, satu run sekali diputuskan; penyaluran hanya saat disetujui, hanya usulan run terkini, sekali per penerima, Σ ≤ dana; tutup bila semua usulan tercatat |
-| `laporan.go` | `AmbilDashboard` (+ `ambilKeuangan`), `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; ringkasan keuangan Beranda: zakat dan infak dibukukan **terpisah** (saldo = diterima − tersalur per jenis, bisa negatif), grafik 12 bulan kalender WIB; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
+| `laporan.go` | `AmbilDashboard` (+ `ambilKeuangan`), `AmbilRingkasanPublik` (agregat tanpa data pribadi untuk landing), `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; ringkasan keuangan Beranda: zakat dan infak dibukukan **terpisah** (saldo = diterima − tersalur per jenis, bisa negatif), grafik 12 bulan kalender WIB; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
 | `donasi.go` | `BuatDonasiWeb`, `TerimaNotifikasi`, `CatatDonasiManual`, `DaftarDonasi`, `AmbilDonasi`, `BatalkanDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `AmbilDonasiPublik`, `AturGerbang` | Donasi web jadi *diterima* **hanya** dari notifikasi gateway yang tanda tangannya sah dan jumlahnya cocok (baris dikunci `FOR UPDATE`, idempoten: notifikasi ganda/terlambat diabaikan). Nomor kuitansi `KWT/<tahun WIB>/<urut>` tanpa celah (penghitung `donasi_urut` di transaksi yang sama). Kuitansi tidak dihapus, hanya *dibatalkan*. No. HP terenkripsi; penuh hanya untuk Admin pada detail. Jumlah Rp 10.000–100.000.000 |
 
 Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `SetStatusPeriode` (compare-and-set), sehingga dua pengguna yang menekan tombol bersamaan tidak bisa sama-sama menang.
@@ -102,7 +102,7 @@ Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `Se
 | `keputusan.go` | `CreatePersetujuan`, `ListPersetujuan`, `CreatePenyaluran`, `ListPenyaluran` |
 | `kriteria.go`, `mustahik.go`, `periode.go`, `penilaian.go`, `aras.go`, `lookup.go` | Kriteria, mustahik, periode & kandidat, penilaian, run ARAS, query bantu (`GetPeriodeForUpdate`, dll.) |
 | `donasi.go` | `CreateDonasi`, `GetDonasi`/`ByKode`/`ForUpdate`, `UpdateDonasi` (hanya kolom status, bukan data donatur/jumlah), `ListDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `NextNomorKuitansi` (wajib di dalam transaksi) |
-| `keuangan.go` | `PenerimaanPerJenis`, `PenyaluranPerJenis`, `PenerimaanPerBulan`, `PenyaluranPerBulan`: agregat baca-saja untuk Beranda. Hanya donasi `diterima`; bulan donasi digeser +7 jam (WIB) karena `dibayar_pada` disimpan UTC |
+| `keuangan.go` | `PenerimaanPerJenis`, `PenyaluranPerJenis`, `PenerimaanPerBulan`, `PenyaluranPerBulan`, `JumlahPenerimaManfaat` (orang berbeda, bukan jumlah baris): agregat baca-saja untuk Beranda dan landing. Hanya donasi `diterima`; bulan donasi digeser +7 jam (WIB) karena `dibayar_pada` disimpan UTC |
 
 Kontrak: store menerima NIK/HP yang **sudah terenkripsi**; setiap query membaca baris `deleted_at IS NULL`; uang `int64` rupiah utuh; bobot `float64` pecahan.
 
@@ -143,6 +143,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `GET /donasi/{id}` | semua | – | 1 baris; `no_hp` penuh hanya untuk Admin, Ketua tersamar | 200 → 404 |
 | `POST /donasi/{id}/batal` | admin | alasan 3–200; hanya status diterima | transaksi `FOR UPDATE` → status dibatalkan (nomor tetap), audit `DONASI_BATAL` | 200 → 409, 422 |
 | `GET /publik/donasi-aktif` | **publik** | – | apakah gateway terpasang | 200 `{aktif}` |
+| `GET /publik/ringkasan` | **publik**, 120/menit/IP | – | angka transparansi landing: hanya enam agregat (`zakat_diterima`, `infak_diterima`, `total_diterima`, `total_tersalur`, `jumlah_donasi`, `penerima_manfaat`); donasi `diterima` saja; tanpa nama/HP. Diuji: semua nilai angka | 200 |
 | `POST /publik/donasi` | **publik**, 5/10 menit/IP | nama, jenis, jumlah, HP opsional, keterangan ≤ 200 | INSERT menunggu + buat transaksi di gateway → `bayar_url` | 201 `{kode,status,bayar_url}` → 422, 429, 502, 503 |
 | `GET /publik/donasi/{kode}` | **publik**, 120/menit/IP | kode = 32 heksadesimal (selain itu 404) | status + data kuitansi milik pemegang kode | 200 → 404 |
 | `POST /publik/midtrans/notifikasi` | **publik**, dijaga tanda tangan | body ≤ 64 KiB; SHA512(order_id+status_code+gross_amount+ServerKey) sah; jumlah = donasi | transaksi `FOR UPDATE`: menunggu → diterima/gagal/kedaluwarsa, terbit nomor kuitansi, audit `DONASI_TERIMA` | 200 → 401 (tanda tangan), 404, 409 (jumlah beda), 503 |
@@ -151,7 +152,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 ## Rute frontend
 | Rute | Isi | Peran |
 |------|-----|-------|
-| `/` | Landing statis (kriteria, contoh ranking) | publik |
+| `/` | Landing masjid: sambutan, ragam zakat/infak + ajakan donasi, **transparansi dana** (angka agregat dari `GET /publik/ringkasan`; bagian disembunyikan bila API gagal atau belum ada data), cara penyaluran ARAS ringkas, kontak. Logo dari `PUBLIC_MASJID_LOGO` (kosong = ikon bawaan) | publik |
 | `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | Beranda umum masjid: 4 kartu keuangan, dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |

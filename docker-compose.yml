@@ -70,6 +70,8 @@ services:
       PUBLIC_MASJID_NAMA: ${PUBLIC_MASJID_NAMA:-Masjid Jami Al-Barokah}
       PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-Jl. Contoh No. 1, Kota}
       PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-0812-0000-0000}
+      # Logo masjid, mis. /logo-masjid.png (berkas di frontend/static/, perlu build ulang). Kosong = ikon bawaan.
+      PUBLIC_MASJID_LOGO: ${PUBLIC_MASJID_LOGO:-}
     ports:
       # 3100 sudah dipakai payment_loki (project lain) di mesin ini, jadi 3101.
       # Ganti WEB_PORT dan WEB_ORIGIN bersamaan di .env bila ingin port lain.

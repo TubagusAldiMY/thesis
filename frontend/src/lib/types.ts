@@ -217,6 +217,16 @@ export interface DonasiTerbaru {
 	dibayar_pada: string | null;
 }
 
+/** Angka transparansi untuk landing publik (GET /api/publik/ringkasan): hanya agregat. */
+export interface RingkasanPublik {
+	zakat_diterima: number;
+	infak_diterima: number;
+	total_diterima: number;
+	total_tersalur: number;
+	jumlah_donasi: number;
+	penerima_manfaat: number;
+}
+
 /** Ringkasan dana masjid di Beranda; zakat dan infak dibukukan terpisah. */
 export interface Keuangan {
 	zakat: DanaJenis;

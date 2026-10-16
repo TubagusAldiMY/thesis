@@ -59,7 +59,8 @@ Backend memakai `App/.env` (contoh: [.env.example](.env.example)); frontend mema
 | `WEB_ORIGIN` | Go | Alamat publik frontend untuk pengalihan setelah bayar; wajib bila `PAYMENT_PROVIDER` aktif (di Docker sama dengan `WEB_ORIGIN` frontend) |
 | `DEMO_PASSWORD` | skrip | Password akun demo lokal untuk `scripts/seed-demo.sh` |
 | `API_URL` | SvelteKit | Alamat Go API (bawaan `http://127.0.0.1:8090`) |
-| `PUBLIC_MASJID_NAMA`, `PUBLIC_MASJID_ALAMAT`, `PUBLIC_MASJID_KONTAK` | SvelteKit | Identitas masjid di sidebar, landing, dan kop laporan |
+| `PUBLIC_MASJID_NAMA`, `PUBLIC_MASJID_ALAMAT`, `PUBLIC_MASJID_KONTAK` | SvelteKit | Identitas masjid di sidebar, landing, dan kop laporan. Alamat/kontak yang diisi tampil di bagian Kontak landing publik, jadi ganti nilai contohnya dengan data asli |
+| `PUBLIC_MASJID_LOGO` | SvelteKit | Opsional. Alamat gambar logo, mis. `/logo-masjid.png` dengan berkas di `frontend/static/`; tampil di landing, login, sidebar, dan halaman publik. Kosong = ikon kubah bawaan. Pakai Docker: build ulang image `web` |
 | `ORIGIN`, `PORT`, `ADDRESS_HEADER`, `XFF_DEPTH` | SvelteKit (production) | Lihat bagian Production |
 
 ## Development

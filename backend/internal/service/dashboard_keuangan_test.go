@@ -73,3 +73,38 @@ func TestDashboard_Keuangan(t *testing.T) {
 		t.Errorf("terbaru=%d perJenis=%v", len(k.DonasiTerbaru), k.PerJenis)
 	}
 }
+
+func TestRingkasanPublik(t *testing.T) {
+	e := baruDonasi(t)
+	petugas := e.user(t)
+
+	if r, err := e.svc.AmbilRingkasanPublik(bg); err != nil || r != (RingkasanPublik{}) {
+		t.Fatalf("kosong = %+v, %v", r, err)
+	}
+
+	catat := func(jenis domain.JenisDonasi, jumlah int64) DonasiView {
+		t.Helper()
+		v, err := e.svc.CatatDonasiManual(bg, petugas, inputManual(func(i *DonasiManualInput) { i.Jenis, i.Jumlah = jenis, jumlah }))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	catat(domain.DonasiZakatFitrah, 100_000)
+	catat(domain.DonasiZakatProfesi, 20_000)
+	catat(domain.DonasiInfak, 50_000)
+	salah := catat(domain.DonasiZakatMal, 999_000)
+	if _, err := e.svc.BatalkanDonasi(bg, salah.ID, "salah input"); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := e.svc.AmbilRingkasanPublik(bg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Yang dibatalkan (999.000) tidak boleh ikut; belum ada penyaluran.
+	mau := RingkasanPublik{ZakatDiterima: 120_000, InfakDiterima: 50_000, TotalDiterima: 170_000, JumlahDonasi: 3}
+	if r != mau {
+		t.Errorf("ringkasan = %+v, mau %+v", r, mau)
+	}
+}
