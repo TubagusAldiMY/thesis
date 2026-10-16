@@ -224,6 +224,58 @@ export interface AuditHalaman {
 	per_page: number;
 }
 
+// ---------- Donasi (penerimaan zakat/infak dari muzaki) ----------
+
+export type JenisDonasi = 'zakat_fitrah' | 'zakat_mal' | 'zakat_profesi' | 'infak';
+export type StatusDonasi = 'menunggu' | 'diterima' | 'gagal' | 'kedaluwarsa' | 'dibatalkan';
+
+/** Donasi untuk pengurus. `no_hp` penuh hanya diisi Go untuk Admin pada detail. */
+export interface Donasi {
+	id: string;
+	kode_publik: string;
+	nama: string;
+	no_hp?: string;
+	no_hp_tersamar?: string;
+	jenis: JenisDonasi;
+	jumlah: number;
+	sumber: 'web' | 'petugas';
+	metode: string;
+	status: StatusDonasi;
+	nomor_kuitansi: string;
+	keterangan: string;
+	alasan_batal: string;
+	dibayar_pada: string | null;
+	dibuat_pada: string;
+	/** donasi web yang sudah diterima tetapi belum dilihat pengurus (notifikasi) */
+	baru: boolean;
+}
+
+export interface DonasiRingkas {
+	baru: number;
+	jumlah_diterima: number;
+	total_diterima: number;
+}
+
+export interface DonasiHalaman {
+	items: Donasi[];
+	total: number;
+	ringkas: DonasiRingkas;
+}
+
+/** Yang boleh dilihat muzaki (tanpa login) lewat kode rahasia tautannya. */
+export interface DonasiPublik {
+	kode: string;
+	status: StatusDonasi;
+	nama: string;
+	jenis: JenisDonasi;
+	jumlah: number;
+	metode: string;
+	nomor_kuitansi?: string;
+	dibayar_pada?: string;
+	/** tautan halaman bayar gateway, hanya selama status menunggu */
+	bayar_url?: string;
+}
+
 /** Bentuk body error Go API. */
 export interface ApiErrorBody {
 	error: string;

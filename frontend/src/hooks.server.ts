@@ -11,6 +11,13 @@ import type { User } from '$lib/types';
 
 const reRequestID = /^[A-Za-z0-9._-]{1,64}$/;
 
+/**
+ * Path untuk log. Kode di /kuitansi/<kode> adalah kunci rahasia tautan kuitansi
+ * muzaki (siapa pun yang memegangnya bisa membukanya), jadi tidak boleh tercatat.
+ * Query string memang tidak pernah dicatat (lihat komentar di handle).
+ */
+const pathLog = (path: string) => (path.startsWith('/kuitansi/') ? '/kuitansi/{kode}' : path);
+
 function log(level: 'info' | 'error', msg: string, field: Record<string, unknown>) {
 	console[level === 'error' ? 'error' : 'log'](
 		JSON.stringify({ time: new Date().toISOString(), level, msg, service: 'frontend', ...field })
@@ -45,7 +52,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	log('info', 'http', {
 		request_id: event.locals.requestId,
 		method: event.request.method,
-		path: event.url.pathname,
+		path: pathLog(event.url.pathname),
 		status: response.status,
 		duration_ms: Date.now() - mulai,
 		user_id: event.locals.user?.id ?? ''
@@ -57,7 +64,7 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 	if (status !== 404) {
 		log('error', 'kesalahan tak tertangani', {
 			request_id: event.locals.requestId,
-			path: event.url.pathname,
+			path: pathLog(event.url.pathname),
 			status,
 			error: error instanceof Error ? error.message : String(error)
 		});

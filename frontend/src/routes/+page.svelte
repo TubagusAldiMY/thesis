@@ -58,6 +58,7 @@
 		</p>
 		<div class="baris-aksi">
 			<a class="tombol utama" href="/login">Masuk ke aplikasi</a>
+			<a class="tombol" href="/donasi">Donasi zakat & infak</a>
 			<a class="tombol" href="#cara-kerja">Lihat cara kerja</a>
 		</div>
 	</section>

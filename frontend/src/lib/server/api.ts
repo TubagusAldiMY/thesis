@@ -46,6 +46,28 @@ export async function mentah(event: RequestEvent, method: string, path: string, 
 }
 
 /**
+ * teruskan mengirim body MENTAH (string) ke Go tanpa menyentuh isinya, untuk
+ * webhook payment gateway: tanda tangannya dihitung dari isi notifikasi, jadi
+ * tidak boleh di-parse lalu di-serialize ulang. Balasan Go dikembalikan apa adanya.
+ */
+export async function teruskan(event: RequestEvent, path: string, body: string): Promise<Response> {
+	try {
+		return await fetch(baseURL() + path, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-Request-Id': event.locals.requestId,
+				'X-Real-IP': event.getClientAddress()
+			},
+			body,
+			signal: AbortSignal.timeout(15_000)
+		});
+	} catch {
+		error(503, 'Server API tidak dapat dihubungi.');
+	}
+}
+
+/**
  * api = mentah + penerjemahan status:
  *  - 2xx → body JSON (204 → undefined)
  *  - 401 → cookie dihapus, alihkan ke /login (sesi habis)
@@ -80,6 +102,8 @@ async function baca<T>(event: RequestEvent, res: Response): Promise<T> {
 		case 409:
 		case 422:
 		case 429:
+		case 502: // payment gateway bermasalah (donasi web)
+		case 503: // fitur belum diaktifkan (donasi web)
 			throw new ApiGagal(res.status, b);
 		default:
 			error(500, { message: 'Terjadi kesalahan pada server', requestId: b.request_id });

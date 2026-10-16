@@ -13,7 +13,8 @@
 		['data', 'Data & penilaian'],
 		['hitung', 'Hitung'],
 		['keputusan', 'Keputusan'],
-		['penyaluran', 'Penyaluran']
+		['penyaluran', 'Penyaluran'],
+		['donasi', 'Donasi']
 	];
 	const warna: Record<string, string> = {
 		LOGIN_GAGAL: 'merah',

@@ -18,6 +18,7 @@
 			{ href: '/mustahik', label: 'Mustahik', tampil: admin },
 			{ href: '/kriteria', label: 'Kriteria', tampil: true },
 			{ href: '/periode', label: 'Periode', tampil: true },
+			{ href: '/penerimaan', label: 'Donasi', tampil: true, lencana: data.donasiBaru },
 			{ href: '/laporan', label: 'Laporan', tampil: true },
 			{ href: '/audit', label: 'Audit log', tampil: true }
 		].filter((m) => m.tampil)
@@ -28,7 +29,7 @@
 			{ href: '/dashboard', label: 'Beranda', tampil: true },
 			{ href: '/mustahik', label: 'Mustahik', tampil: admin },
 			{ href: '/periode', label: 'Periode', tampil: true },
-			{ href: '/lainnya', label: 'Lainnya', tampil: true }
+			{ href: '/lainnya', label: 'Lainnya', tampil: true, lencana: data.donasiBaru }
 		].filter((m) => m.tampil)
 	);
 
@@ -53,7 +54,9 @@
 		</a>
 		<nav aria-label="Menu utama">
 			{#each menu as m (m.href)}
-				<a href={m.href} aria-current={aktif(m.href) ? 'page' : undefined}>{m.label}</a>
+				<a href={m.href} aria-current={aktif(m.href) ? 'page' : undefined}>
+					{m.label}{#if m.lencana}<span class="lencana" title="Donasi web baru">{m.lencana}</span>{/if}
+				</a>
 			{/each}
 		</nav>
 	</aside>
@@ -82,7 +85,9 @@
 
 	<nav class="bawah tanpa-cetak" aria-label="Menu utama">
 		{#each menuBawah as m (m.href)}
-			<a href={m.href} aria-current={aktif(m.href) ? 'page' : undefined}>{m.label}</a>
+			<a href={m.href} aria-current={aktif(m.href) ? 'page' : undefined}>
+				{m.label}{#if m.lencana}<span class="lencana" title="Donasi web baru">{m.lencana}</span>{/if}
+			</a>
 		{/each}
 	</nav>
 </div>
@@ -127,6 +132,20 @@
 		padding: 0.8rem 1rem;
 		border-radius: 10px;
 		opacity: 0.92;
+	}
+	/* Penanda notifikasi: donasi web baru yang belum dilihat pengurus. */
+	.lencana {
+		display: inline-block;
+		margin-left: 0.5rem;
+		min-width: 1.25rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: var(--kuning);
+		color: var(--kuning-teks);
+		font-size: 0.75rem;
+		font-weight: 700;
+		line-height: 1.25rem;
+		text-align: center;
 	}
 	.samping nav a:hover {
 		background: rgba(255, 255, 255, 0.08);

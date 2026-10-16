@@ -1,15 +1,16 @@
-<!-- Menu "Lainnya" (Android): Kriteria & bobot, Audit log, Laporan, Profil & password, Tentang, Keluar. -->
+<!-- Menu "Lainnya" (Android): Donasi, Kriteria & bobot, Audit log, Laporan, Profil & password, Tentang, Keluar. -->
 <script lang="ts">
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const menu = [
-		{ href: '/kriteria', label: 'Kriteria & bobot' },
-		{ href: '/audit', label: 'Audit log' },
-		{ href: '/laporan', label: 'Laporan' },
-		{ href: '/profil', label: 'Profil & password' },
-		{ href: '/tentang', label: 'Tentang aplikasi' }
-	];
+	const menu = $derived([
+		{ href: '/penerimaan', label: 'Donasi', lencana: data.donasiBaru },
+		{ href: '/kriteria', label: 'Kriteria & bobot', lencana: 0 },
+		{ href: '/audit', label: 'Audit log', lencana: 0 },
+		{ href: '/laporan', label: 'Laporan', lencana: 0 },
+		{ href: '/profil', label: 'Profil & password', lencana: 0 },
+		{ href: '/tentang', label: 'Tentang aplikasi', lencana: 0 }
+	]);
 </script>
 
 <svelte:head><title>Lainnya · SPK Zakat</title></svelte:head>
@@ -21,7 +22,10 @@
 	</div>
 	<nav class="kartu daftar" aria-label="Menu lainnya">
 		{#each menu as m (m.href)}
-			<a href={m.href}>{m.label} <span aria-hidden="true">›</span></a>
+			<a href={m.href}>
+				<span>{m.label}{#if m.lencana}<span class="lencana" title="Donasi web baru">{m.lencana}</span>{/if}</span>
+				<span aria-hidden="true">›</span>
+			</a>
 		{/each}
 		<form method="POST" action="/logout"><button type="submit">Keluar</button></form>
 	</nav>
@@ -31,6 +35,19 @@
 	.daftar {
 		padding: 0.25rem 0;
 		display: grid;
+	}
+	.lencana {
+		display: inline-block;
+		margin-left: 0.5rem;
+		min-width: 1.25rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: var(--kuning);
+		color: var(--kuning-teks);
+		font-size: 0.75rem;
+		font-weight: 700;
+		line-height: 1.25rem;
+		text-align: center;
 	}
 	.daftar a,
 	.daftar button {
