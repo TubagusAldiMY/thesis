@@ -7,9 +7,10 @@ export const masjid = {
 	// Kosong bila belum diisi: kop laporan tidak boleh mencetak placeholder.
 	alamat: env.PUBLIC_MASJID_ALAMAT || '',
 	kontak: env.PUBLIC_MASJID_KONTAK || '',
-	// Alamat gambar logo, mis. "/logo-masjid.png" (taruh berkasnya di frontend/static/).
-	// Kosong = pakai ikon kubah bawaan (IkonMasjid).
-	logo: env.PUBLIC_MASJID_LOGO || '',
+	// Alamat gambar logo (berkas di frontend/static/). Bawaan = lambang Masjid Jami' Al-Barokah
+	// yang disertakan; masjid lain cukup mengganti berkas itu atau mengisi alamat lain.
+	// Versi lengkap (dengan tulisan) ada di /logo-masjid-lengkap.jpeg untuk ukuran besar.
+	logo: env.PUBLIC_MASJID_LOGO || '/logo-masjid.jpg',
 	// Foto masjid untuk latar hero landing, mis. "/foto-masjid.jpg" (berkas di frontend/static/).
 	// Kosong = latar hijau berpola.
 	foto: env.PUBLIC_MASJID_FOTO || '',

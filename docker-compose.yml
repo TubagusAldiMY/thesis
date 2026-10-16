@@ -70,7 +70,7 @@ services:
       PUBLIC_MASJID_NAMA: ${PUBLIC_MASJID_NAMA:-Masjid Jami Al-Barokah}
       PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-Jl. Contoh No. 1, Kota}
       PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-0812-0000-0000}
-      # Logo masjid, mis. /logo-masjid.png (berkas di frontend/static/, perlu build ulang). Kosong = ikon bawaan.
+      # Logo masjid (berkas di frontend/static/, perlu build ulang). Kosong = logo bawaan /logo-masjid.jpg.
       PUBLIC_MASJID_LOGO: ${PUBLIC_MASJID_LOGO:-}
       # Foto hero landing (opsional) dan koordinat masjid untuk jadwal salat (bawaan: Pamulang).
       PUBLIC_MASJID_FOTO: ${PUBLIC_MASJID_FOTO:-}

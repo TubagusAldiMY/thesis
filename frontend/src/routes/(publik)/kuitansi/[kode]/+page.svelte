@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import { page } from '$app/state';
+	import IkonMasjid from '$lib/components/IkonMasjid.svelte';
 	import { labelJenisDonasi, namaMetode, rupiah, tanggal, terbilang } from '$lib/format';
 	import { kopMasjid, masjid } from '$lib/masjid';
 	import type { PageProps } from './$types';
@@ -44,9 +45,12 @@
 
 	<article class="kartu kuitansi" class:batal>
 		<header class="kop">
-			<div>
-				<h1>{masjid.nama}</h1>
-				{#if kopMasjid}<p>{kopMasjid}</p>{/if}
+			<div class="identitas">
+				<IkonMasjid ukuran={56} />
+				<div>
+					<h1>{masjid.nama}</h1>
+					{#if kopMasjid}<p>{kopMasjid}</p>{/if}
+				</div>
 			</div>
 			<div class="kanan">
 				<strong>KUITANSI {judulJenis}</strong>
@@ -93,6 +97,11 @@
 		padding-bottom: 1rem;
 		border-bottom: 2px solid var(--hijau-tua);
 		margin-bottom: 1.25rem;
+	}
+	.identitas {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
 	}
 	.kop h1 {
 		margin: 0;

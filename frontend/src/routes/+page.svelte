@@ -192,9 +192,12 @@
 
 	<footer class="kaki">
 		<div class="lebar kaki-isi">
-			<div>
-				<p class="kaki-nama">{masjid.nama}</p>
-				<p>Data pribadi (NIK, No. HP) dienkripsi dan tidak pernah ditampilkan utuh.</p>
+			<div class="kaki-merek">
+				<IkonMasjid ukuran={44} />
+				<div>
+					<p class="kaki-nama">{masjid.nama}</p>
+					<p>Data pribadi (NIK, No. HP) dienkripsi dan tidak pernah ditampilkan utuh.</p>
+				</div>
 			</div>
 			<p class="kaki-tautan"><a href="/donasi">Donasi</a> · <a href="/cara-kerja">Cara kerja ARAS</a> · <a href="/login">Masuk pengurus</a></p>
 		</div>
@@ -640,6 +643,11 @@
 	}
 	.kaki p {
 		margin: 0;
+	}
+	.kaki-merek {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
 	}
 	.kaki-nama {
 		color: #fff;

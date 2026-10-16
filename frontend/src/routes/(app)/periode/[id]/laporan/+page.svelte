@@ -5,6 +5,7 @@
   window.print(); @media print menyembunyikan navigasi & tombol (NFR-09).
 -->
 <script lang="ts">
+	import IkonMasjid from '$lib/components/IkonMasjid.svelte';
 	import { angka, desimal, rupiah, tanggal, tanggalSaja } from '$lib/format';
 	import { kopMasjid, masjid } from '$lib/masjid';
 	import type { PageProps } from './$types';
@@ -39,9 +40,12 @@
 
 <article class="kartu laporan">
 	<header class="kop">
-		<div>
-			<h1>{masjid.nama}</h1>
-			{#if kopMasjid}<p>{kopMasjid}</p>{/if}
+		<div class="identitas">
+			<IkonMasjid ukuran={60} />
+			<div>
+				<h1>{masjid.nama}</h1>
+				{#if kopMasjid}<p>{kopMasjid}</p>{/if}
+			</div>
 		</div>
 		<div class="kanan">
 			<strong>LAPORAN PENYALURAN {p.jenis === 'zakat' ? 'ZAKAT' : 'INFAK'}</strong>
@@ -146,6 +150,11 @@
 		border-bottom: 3px double var(--teks);
 		padding-bottom: 1rem;
 		flex-wrap: wrap;
+	}
+	.identitas {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
 	}
 	.kop h1 {
 		font-size: 1.5rem;

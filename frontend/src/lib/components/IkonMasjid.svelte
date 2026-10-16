@@ -22,5 +22,7 @@
 <style>
 	.logo {
 		object-fit: contain; /* logo tidak boleh gepeng bila tidak persegi */
+		background: #fff; /* logo berlatar putih jadi lencana rapi di latar gelap (navigasi, sidebar) */
+		border-radius: 22%;
 	}
 </style>
