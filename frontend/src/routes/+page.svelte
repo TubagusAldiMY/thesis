@@ -20,14 +20,6 @@
 		{ alt: 'A5', k: 0.5611, ket: 'Cadangan' },
 		{ alt: 'A3', k: 0.4099, ket: 'Cadangan' }
 	];
-	const langkah = [
-		['Matriks keputusan', 'Nilai tiap calon penerima pada 5 kriteria, ditambah alternatif ideal A₀ (nilai terbaik tiap kriteria).'],
-		['Normalisasi', 'Kriteria benefit: r = x ÷ Σx. Kriteria cost dibalik dulu (1/x) lalu dinormalisasi.'],
-		['Terbobot', 'd = w × r, dengan w = bobot kriteria (Σw = 1).'],
-		['Fungsi optimalitas', 'S = Σ d pada satu baris; S₀ milik alternatif ideal.'],
-		['Derajat utilitas', 'K = S ÷ S₀ (0–1). Semakin besar K, semakin layak menerima.'],
-		['Ranking & kuota', 'Urut menurut K; N teratas = usulan penerima, N = ⌊dana ÷ nominal per penerima⌋.']
-	];
 </script>
 
 <svelte:head>
@@ -59,7 +51,7 @@
 		<div class="baris-aksi">
 			<a class="tombol utama" href="/login">Masuk ke aplikasi</a>
 			<a class="tombol" href="/donasi">Donasi zakat & infak</a>
-			<a class="tombol" href="#cara-kerja">Lihat cara kerja</a>
+			<a class="tombol" href="/cara-kerja">Lihat cara kerja</a>
 		</div>
 	</section>
 
@@ -99,19 +91,6 @@
 				{/each}
 			</ol>
 		</div>
-	</section>
-
-	<section class="lebar" id="cara-kerja">
-		<h2 class="judul-bagian">Cara kerja ARAS</h2>
-		<ol class="langkah">
-			{#each langkah as [judul, isi], i (judul)}
-				<li class="kartu">
-					<span class="badge hijau">Langkah {i + 1}</span>
-					<h3>{judul}</h3>
-					<p class="redup">{isi}</p>
-				</li>
-			{/each}
-		</ol>
 	</section>
 </main>
 
@@ -174,8 +153,7 @@
 		gap: 1.5rem;
 		margin-bottom: 3rem;
 	}
-	.dua h2,
-	.judul-bagian {
+	.dua h2 {
 		margin-bottom: 1rem;
 	}
 	.catatan {
@@ -211,21 +189,6 @@
 		display: block;
 		height: 100%;
 		background: var(--hijau);
-	}
-	.langkah {
-		list-style: none;
-		padding: 0;
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-		gap: 1rem;
-	}
-	.langkah li {
-		display: grid;
-		gap: 0.5rem;
-		align-content: start;
-	}
-	.langkah .badge {
-		justify-self: start;
 	}
 	.kaki {
 		padding-top: 2rem;

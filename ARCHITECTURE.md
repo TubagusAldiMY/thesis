@@ -150,7 +150,8 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 ## Rute frontend
 | Rute | Isi | Peran |
 |------|-----|-------|
-| `/` | Landing statis (kriteria, rumus, contoh ranking) | publik |
+| `/` | Landing statis (kriteria, contoh ranking) | publik |
+| `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | 4 kartu, stepper, periode terbaru | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
