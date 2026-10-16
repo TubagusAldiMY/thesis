@@ -6,9 +6,12 @@ import type { RingkasanPublik } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	// Tanggal hari ini menurut kalender WIB (zona tetap +7), dasar jadwal salat.
+	const w = new Date(Date.now() + 7 * 3600_000);
+	const hari = { tahun: w.getUTCFullYear(), bulan: w.getUTCMonth() + 1, tanggal: w.getUTCDate() };
 	try {
-		return { ringkasan: await api<RingkasanPublik>(event, 'GET', '/api/publik/ringkasan') };
+		return { hari, ringkasan: await api<RingkasanPublik>(event, 'GET', '/api/publik/ringkasan') };
 	} catch {
-		return { ringkasan: null };
+		return { hari, ringkasan: null };
 	}
 };

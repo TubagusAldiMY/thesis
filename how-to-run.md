@@ -61,6 +61,8 @@ Backend memakai `App/.env` (contoh: [.env.example](.env.example)); frontend mema
 | `API_URL` | SvelteKit | Alamat Go API (bawaan `http://127.0.0.1:8090`) |
 | `PUBLIC_MASJID_NAMA`, `PUBLIC_MASJID_ALAMAT`, `PUBLIC_MASJID_KONTAK` | SvelteKit | Identitas masjid di sidebar, landing, dan kop laporan. Alamat/kontak yang diisi tampil di bagian Kontak landing publik, jadi ganti nilai contohnya dengan data asli |
 | `PUBLIC_MASJID_LOGO` | SvelteKit | Opsional. Alamat gambar logo, mis. `/logo-masjid.png` dengan berkas di `frontend/static/`; tampil di landing, login, sidebar, dan halaman publik. Kosong = ikon kubah bawaan. Pakai Docker: build ulang image `web` |
+| `PUBLIC_MASJID_FOTO` | SvelteKit | Opsional. Foto masjid untuk latar hero landing, mis. `/foto-masjid.jpg` (berkas di `frontend/static/`); otomatis digelapkan agar teks terbaca. Kosong = latar hijau tua berpola. Pakai Docker: build ulang image `web` |
+| `PUBLIC_MASJID_LINTANG`, `PUBLIC_MASJID_BUJUR` | SvelteKit | Koordinat masjid (derajat desimal, lintang selatan negatif) untuk jadwal salat di landing. Bawaan: Pamulang, Tangerang Selatan (-6.3436, 106.7365). Isi titik masjid yang sebenarnya; selisih 1° bujur ≈ 4 menit. Rumus Kemenag RI (subuh 20°, isya 18°), dihitung di aplikasi tanpa API luar |
 | `ORIGIN`, `PORT`, `ADDRESS_HEADER`, `XFF_DEPTH` | SvelteKit (production) | Lihat bagian Production |
 
 ## Development

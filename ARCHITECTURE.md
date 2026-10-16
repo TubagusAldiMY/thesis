@@ -43,6 +43,8 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `frontend/src/lib/server/api.ts` | Satu-satunya jalur ke Go: `mentah`, `api`, `apiOpsional`, `aksi`, `wajibAdmin` |
 | `frontend/src/lib/format.ts` | Format id-ID (ribuan titik, desimal koma, dd/mm/yyyy) + label enum |
 | `frontend/src/lib/types.ts` | Tipe = bentuk JSON Go |
+| `frontend/src/lib/salat.ts` | Jadwal salat dihitung di aplikasi (posisi matahari, parameter Kemenag RI: subuh 20°, isya 18°); fungsi murni, tanpa API luar. Diuji ke pembanding independen (selisih ≤ 1 menit). Tampil lewat `components/JadwalSalat.svelte` |
+| `frontend/src/lib/masjid.ts` | Identitas masjid dari env publik: nama, alamat, kontak, logo, foto hero, koordinat (jadwal salat) |
 | `frontend/src/routes/` | Halaman (lihat tabel rute di bawah) |
 | `frontend/svelte.config.js` | adapter-node + CSP otomatis |
 
@@ -152,7 +154,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 ## Rute frontend
 | Rute | Isi | Peran |
 |------|-----|-------|
-| `/` | Landing masjid: sambutan, ragam zakat/infak + ajakan donasi, **transparansi dana** (angka agregat dari `GET /publik/ringkasan`; bagian disembunyikan bila API gagal atau belum ada data), cara penyaluran ARAS ringkas, kontak. Logo dari `PUBLIC_MASJID_LOGO` (kosong = ikon bawaan) | publik |
+| `/` | Landing masjid: navigasi pil melayang dengan tombol Donasi, hero hijau tua beraksen emas (foto opsional `PUBLIC_MASJID_FOTO`), **jadwal salat hari ini** + penanda salat berikutnya, ragam zakat/infak + ajakan donasi, **transparansi dana** (angka agregat dari `GET /publik/ringkasan`; bagian disembunyikan bila API gagal atau belum ada data), cara penyaluran ARAS ringkas, kontak. Logo dari `PUBLIC_MASJID_LOGO` (kosong = ikon bawaan) | publik |
 | `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | Beranda umum masjid: 4 kartu keuangan, dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
