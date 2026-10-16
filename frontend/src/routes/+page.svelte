@@ -177,20 +177,9 @@
 			</div>
 		</section>
 
-		{#if adaKontak}
-			<section class="lebar bagian dua-kolom" id="kontak">
-				<div class="kolom-teks">
-					<h2>Kontak {masjid.nama}</h2>
-				</div>
-				<div class="kontak">
-					{#if masjid.alamat}<p><strong>Alamat</strong><br />{masjid.alamat}</p>{/if}
-					{#if masjid.kontak}<p><strong>Kontak</strong><br />{masjid.kontak}</p>{/if}
-				</div>
-			</section>
-		{/if}
 	</main>
 
-	<footer class="kaki">
+	<footer class="kaki" id="kontak">
 		<div class="lebar kaki-isi">
 			<div class="kaki-merek">
 				<IkonMasjid ukuran={44} />
@@ -199,6 +188,13 @@
 					<p>Data pribadi (NIK, No. HP) dienkripsi dan tidak pernah ditampilkan utuh.</p>
 				</div>
 			</div>
+			{#if adaKontak}
+				<address class="kaki-kontak">
+					<p class="kaki-judul">Kontak</p>
+					{#if masjid.alamat}<p>{masjid.alamat}</p>{/if}
+					{#if masjid.kontak}<p>{masjid.kontak}</p>{/if}
+				</address>
+			{/if}
 			<p class="kaki-tautan"><a href="/donasi">Donasi</a> · <a href="/cara-kerja">Cara kerja ARAS</a> · <a href="/login">Masuk pengurus</a></p>
 		</div>
 	</footer>
@@ -617,29 +613,33 @@
 	.kriteria li:last-child {
 		border-bottom: 1px solid var(--garis);
 	}
-	.kontak {
-		display: grid;
-		gap: 1.25rem;
-	}
-	.kontak p {
-		margin: 0;
-		line-height: 1.6;
-	}
-
-	/* ---- Footer hijau tua penuh lebar ---- */
+	/* ---- Footer hijau tua penuh lebar (identitas, kontak, tautan) ---- */
 	.kaki {
 		background: var(--hijau-pekat);
 		color: rgb(255 255 255 / 0.75);
 		font-size: 0.9rem;
+		scroll-margin-top: 5rem;
 	}
 	.kaki-isi {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-end;
-		gap: 2rem;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) auto;
+		gap: 2.5rem;
+		align-items: start;
 		padding-top: 2.5rem;
 		padding-bottom: 2.5rem;
+	}
+	.kaki-kontak {
+		display: grid;
+		gap: 0.35rem;
+		font-style: normal; /* <address> bawaannya miring */
+		line-height: 1.55;
+	}
+	.kaki-judul {
+		color: var(--emas-terang);
+		font-weight: 600;
+		font-size: 0.8rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
 	}
 	.kaki p {
 		margin: 0;
@@ -725,6 +725,10 @@
 		.bagian {
 			padding-top: 3rem;
 			padding-bottom: 3rem;
+		}
+		.kaki-isi {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 1.5rem;
 		}
 	}
 </style>
