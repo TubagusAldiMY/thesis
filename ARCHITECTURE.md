@@ -29,10 +29,11 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `backend/cmd/server/` | **Entry point API**: baca env → buka MySQL → rakit crypto + service + httpapi → listen + graceful shutdown |
 | `backend/cmd/migrate/` | CLI migrasi (`DATABASE_URL`) |
 | `backend/cmd/useradmin/` | CLI buat akun / reset password (FR-17), password dibaca tanpa echo |
-| `backend/migrations/` | `V001` skema 12 tabel, `V002` seed kriteria, `V003` kolom `aras_run.langkah`; disematkan ke biner (`go:embed`) |
+| `backend/migrations/` | `V001` skema 12 tabel, `V002` seed kriteria, `V003` kolom `aras_run.langkah`, `V004` tabel `donasi` + `donasi_urut` (penomor kuitansi); disematkan ke biner (`go:embed`) |
 | `backend/internal/aras/` | **Inti skripsi**: fungsi murni `Hitung` (6 langkah ARAS) |
 | `backend/internal/domain/` | Tipe inti + error (`ErrNotFound`, `ErrConflict`, `ConflictError`, `ValidationError`), `User`, `Audit`, `Persetujuan`, `Penyaluran`. Tidak mengimpor paket lain |
 | `backend/internal/crypto/` | Argon2id, AES-256-GCM (NIK/HP), HMAC-SHA256 |
+| `backend/internal/payment/` | Penyedia pembayaran donasi web (`domain.GerbangBayar`): `Midtrans` (Snap + verifikasi tanda tangan notifikasi SHA512) dan `Tiruan` (palsu untuk dev/demo/test, menolak menyala di production). Hanya mengimpor `domain` |
 | `backend/internal/store/` | Akses MySQL (SQL berparameter), satu tipe `Store` untuk koneksi & transaksi |
 | `backend/internal/service/` | Aturan bisnis & transaksi; tidak tahu HTTP |
 | `backend/internal/httpapi/` | Router (`net/http.ServeMux` Go 1.22+), middleware, handler, pemetaan error → status |
@@ -50,6 +51,7 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 cmd/server ──► httpapi ──► service ──► store ──► domain
                                │  └──► crypto, aras (murni)
 cmd/useradmin ──► service      └──► domain
+cmd/server ──► payment ──► domain   (gateway dipasang ke service lewat AturGerbang; httpapi hanya mengenal payment.Tiruan untuk simulasi dev)
 cmd/migrate ──► migrate ──► migrations (embed)
 ```
 `domain`, `aras`, `crypto` tidak mengimpor paket project lain. `service` tidak tahu HTTP; `httpapi` tidak berisi aturan bisnis.
@@ -87,6 +89,7 @@ Browser ─► SvelteKit hooks.server.ts (request_id, sesi, header keamanan)
 | `aras.go` | `HitungAras`, `AmbilHasilAras`, `DaftarRun` | Dari draft/dihitung; lengkap; potret bobot + langkah disimpan; run baru = versi naik |
 | `keputusan.go` | `AmbilDetailPeriode`, `Putuskan`, `BukaKembali`, `CatatPenyaluran`, `DaftarPenyaluran`, `TutupPeriode` | Keputusan hanya saat dihitung, catatan wajib bila tolak, satu run sekali diputuskan; penyaluran hanya saat disetujui, hanya usulan run terkini, sekali per penerima, Σ ≤ dana; tutup bila semua usulan tercatat |
 | `laporan.go` | `AmbilDashboard`, `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
+| `donasi.go` | `BuatDonasiWeb`, `TerimaNotifikasi`, `CatatDonasiManual`, `DaftarDonasi`, `AmbilDonasi`, `BatalkanDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `AmbilDonasiPublik`, `AturGerbang` | Donasi web jadi *diterima* **hanya** dari notifikasi gateway yang tanda tangannya sah dan jumlahnya cocok (baris dikunci `FOR UPDATE`, idempoten: notifikasi ganda/terlambat diabaikan). Nomor kuitansi `KWT/<tahun WIB>/<urut>` tanpa celah (penghitung `donasi_urut` di transaksi yang sama). Kuitansi tidak dihapus, hanya *dibatalkan*. No. HP terenkripsi; penuh hanya untuk Admin pada detail. Jumlah Rp 10.000–100.000.000 |
 
 Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `SetStatusPeriode` (compare-and-set), sehingga dua pengguna yang menekan tombol bersamaan tidak bisa sama-sama menang.
 
@@ -98,6 +101,7 @@ Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `Se
 | `audit.go` | `InsertAudit`, `ListAudit` (LEFT JOIN users untuk nama pelaku, paging) |
 | `keputusan.go` | `CreatePersetujuan`, `ListPersetujuan`, `CreatePenyaluran`, `ListPenyaluran` |
 | `kriteria.go`, `mustahik.go`, `periode.go`, `penilaian.go`, `aras.go`, `lookup.go` | Kriteria, mustahik, periode & kandidat, penilaian, run ARAS, query bantu (`GetPeriodeForUpdate`, dll.) |
+| `donasi.go` | `CreateDonasi`, `GetDonasi`/`ByKode`/`ForUpdate`, `UpdateDonasi` (hanya kolom status, bukan data donatur/jumlah), `ListDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `NextNomorKuitansi` (wajib di dalam transaksi) |
 
 Kontrak: store menerima NIK/HP yang **sudah terenkripsi**; setiap query membaca baris `deleted_at IS NULL`; uang `int64` rupiah utuh; bobot `float64` pecahan.
 
@@ -131,6 +135,17 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `POST /periode/{id}/tutup` | admin | disetujui; semua usulan tercatat | status → selesai | 200 → 409, 422 |
 | `GET /periode/{id}/laporan?format=csv` | semua | sudah pernah dihitung | gabung ranking + penyaluran + nama | 200 JSON/CSV → 404 |
 | `GET /audit?kategori&page` | semua | kategori sah | SELECT + nama pelaku, 20/halaman | 200 `{items,total,page,per_page}` |
+| `GET /donasi?status&jenis&q&page&per_page` | semua | status/jenis sah, q ≤ 100 | SELECT + paging + ringkasan | 200 `{items,total,ringkas}` → 422 |
+| `POST /donasi` | admin | nama 2–100, jenis sah, jumlah 10 rb–100 jt, metode tunai\|transfer, tanggal ≤ hari ini (WIB), HP opsional | transaksi: nomor kuitansi + INSERT status diterima, audit `DONASI_CATAT` | 201 → 422 |
+| `GET /donasi/ringkas` | semua | – | jumlah donasi web baru (belum dilihat), jumlah & total diterima | 200 `{baru,jumlah_diterima,total_diterima}` |
+| `POST /donasi/dibaca` | semua | – | tandai semua donasi web diterima sebagai dilihat | 200 `{diubah}` |
+| `GET /donasi/{id}` | semua | – | 1 baris; `no_hp` penuh hanya untuk Admin, Ketua tersamar | 200 → 404 |
+| `POST /donasi/{id}/batal` | admin | alasan 3–200; hanya status diterima | transaksi `FOR UPDATE` → status dibatalkan (nomor tetap), audit `DONASI_BATAL` | 200 → 409, 422 |
+| `GET /publik/donasi-aktif` | **publik** | – | apakah gateway terpasang | 200 `{aktif}` |
+| `POST /publik/donasi` | **publik**, 5/10 menit/IP | nama, jenis, jumlah, HP opsional, keterangan ≤ 200 | INSERT menunggu + buat transaksi di gateway → `bayar_url` | 201 `{kode,status,bayar_url}` → 422, 429, 502, 503 |
+| `GET /publik/donasi/{kode}` | **publik**, 120/menit/IP | kode = 32 heksadesimal (selain itu 404) | status + data kuitansi milik pemegang kode | 200 → 404 |
+| `POST /publik/midtrans/notifikasi` | **publik**, dijaga tanda tangan | body ≤ 64 KiB; SHA512(order_id+status_code+gross_amount+ServerKey) sah; jumlah = donasi | transaksi `FOR UPDATE`: menunggu → diterima/gagal/kedaluwarsa, terbit nomor kuitansi, audit `DONASI_TERIMA` | 200 → 401 (tanda tangan), 404, 409 (jumlah beda), 503 |
+| `POST /publik/tiruan/{kode}/bayar` | publik, **hanya bila `PAYMENT_PROVIDER=tiruan`** | – | memicu notifikasi settlement tiruan lewat jalur yang sama | 200 → 404 bila rute tidak terpasang |
 
 ## Rute frontend
 | Rute | Isi | Peran |
@@ -146,6 +161,10 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/periode/[id]/penyaluran` | Catat per penerima, tutup periode | semua (catat: admin) |
 | `/periode/[id]/laporan`, `/laporan.csv` | Template cetak + unduh CSV | semua |
 | `/audit`, `/laporan`, `/profil`, `/tentang`, `/lainnya` | Audit; daftar laporan; ganti password; tentang; menu HP | semua |
+| `/penerimaan`, `/penerimaan/baru`, `/penerimaan/[id]` | Menu pengurus **Donasi**: daftar + ringkasan + penanda donasi web baru; catat donasi tunai/transfer; detail (kuitansi, WhatsApp, batal). Penanda angka di menu dari `GET /api/donasi/ringkas` (dimuat `(app)/+layout.server.ts`) | semua lihat; Admin mencatat/membatalkan |
+| `/donasi`, `/donasi/lanjut`, `/donasi/selesai`, `/donasi/tiruan` | **Publik**: formulir donasi → perantara di domain sendiri (CSP `form-action 'self'` memblokir pengalihan langsung ke gateway) → halaman bayar gateway → status (diperbarui otomatis). `/donasi/tiruan` hanya berfungsi pada penyedia tiruan | publik |
+| `/kuitansi/[kode]` | **Publik**: kuitansi cetak/PDF dengan terbilang; stempel DIBATALKAN bila dibatalkan. Kode di path tidak dicatat di log | pemegang kode |
+| `/midtrans/notifikasi` (POST) | Penerima webhook Midtrans; hanya meneruskan body mentah ke Go (Go sendiri tidak publik) | gateway |
 | `/logout` (POST) | Cabut sesi + hapus cookie | semua |
 
 Pola tiap halaman: `+page.server.ts` memanggil `api()` (load) atau `aksi(() => api(...))` (form action); `+page.svelte` hanya menampilkan (`$props`, `$state`, `$derived`) dan memakai `use:enhance` supaya tetap jalan tanpa JavaScript.
@@ -156,7 +175,8 @@ Pola tiap halaman: `+page.server.ts` memanggil `api()` (load) atau `aksi(() => a
 - CSRF: cek `Origin` bawaan SvelteKit untuk form action; Go hanya menerima cookie SameSite=Strict.
 - CSP otomatis SvelteKit (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, HSTS di production.
 - NIK/HP AES-256-GCM, hanya 4 digit terakhir yang tampil; tidak pernah masuk log/audit/CSV.
-- Log akses tidak mencatat query string (bisa berisi nama).
+- Log akses tidak mencatat query string (bisa berisi nama), dan segmen rahasia di path (`/api/publik/donasi/{kode}`, `/kuitansi/{kode}`) disamarkan (`pathLog`).
+- **Endpoint publik donasi** (satu-satunya selain login/healthz tanpa `peran()`): pembatas laju per IP (memori), validasi ketat di service, kolom jebakan anti-bot di form, kode rahasia 128 bit untuk akses satu donasi (format salah = 404), dan HP terenkripsi AES-256-GCM. Data yang dikirim ke gateway hanya order_id, jumlah, nama item, dan nama donatur (tanpa HP/alamat). Webhook dijaga tanda tangan SHA512 (perbandingan waktu-konstan) + pencocokan jumlah, bukan sesi; status donasi tidak pernah berubah karena parameter di URL pengalihan.
 
 ## Cara membaca project
 1. `docs/02-perancangan-aras.md` → `backend/internal/aras/aras.go` + `aras_test.go` — inti skripsi.

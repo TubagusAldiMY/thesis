@@ -53,6 +53,10 @@ Backend memakai `App/.env` (contoh: [.env.example](.env.example)); frontend mema
 | `ADDR` | Go | Alamat listen API (bawaan `127.0.0.1:8090`, hanya lokal) |
 | `COOKIE_SECURE` | Go | `false` hanya untuk development lewat curl/http; production `true` (bawaan) |
 | `LOG_LEVEL` | Go | `debug`/`info`/`warn`/`error` (bawaan `info`) |
+| `PAYMENT_PROVIDER` | Go | Donasi online: kosong = nonaktif, `midtrans`, atau `tiruan` (palsu, hanya dev/demo). Lihat bagian "Donasi online" |
+| `MIDTRANS_SERVER_KEY` | Go | Server Key Midtrans (**rahasia**). Wajib bila `PAYMENT_PROVIDER=midtrans` |
+| `MIDTRANS_SNAP_URL` | Go | Alamat Snap; kosong = sandbox |
+| `WEB_ORIGIN` | Go | Alamat publik frontend untuk pengalihan setelah bayar; wajib bila `PAYMENT_PROVIDER` aktif (di Docker sama dengan `WEB_ORIGIN` frontend) |
 | `DEMO_PASSWORD` | skrip | Password akun demo lokal untuk `scripts/seed-demo.sh` |
 | `API_URL` | SvelteKit | Alamat Go API (bawaan `http://127.0.0.1:8090`) |
 | `PUBLIC_MASJID_NAMA`, `PUBLIC_MASJID_ALAMAT`, `PUBLIC_MASJID_KONTAK` | SvelteKit | Identitas masjid di sidebar, landing, dan kop laporan |
@@ -195,6 +199,19 @@ docker compose --env-file .env stop mysql
 
 Data tetap di volume `spkzakat-mysql-data`. `docker compose --env-file .env down -v` **menghapus semua data dev**.
 
+## Donasi online (opsional)
+Halaman publik **`/donasi`** (tanpa login) menerima zakat/infak dari muzaki lewat payment gateway, lalu menerbitkan kuitansi yang bisa dicetak. Menu pengurus **Donasi** (`/penerimaan`) menampilkan semuanya dan memungkinkan Admin mencatat donasi tunai/transfer langsung. Tanpa `PAYMENT_PROVIDER`, halaman publik menampilkan "belum diaktifkan" dan menu pengurus tetap berfungsi.
+
+**Mencoba tanpa akun Midtrans** (pembayaran PALSU, hanya development): di `.env` set `PAYMENT_PROVIDER=tiruan`, `COOKIE_SECURE=false`, dan `WEB_ORIGIN` ke alamat frontend (mis. `http://localhost:5173` untuk `npm run dev`), lalu jalankan ulang Go API. Buka `/donasi`, isi form, dan tombol "Simulasikan bayar berhasil" akan mengubah donasi menjadi lunas lewat jalur notifikasi yang sama dengan gateway asli. Server **menolak start** bila `tiruan` dipakai dengan `COOKIE_SECURE` bukan `false`.
+
+**Midtrans sandbox**:
+1. Daftar akun Midtrans, buka mode **Sandbox**, salin **Server Key**.
+2. `.env`: `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY=…`, `WEB_ORIGIN=https://alamat-publik` (alamat yang dibuka muzaki). Biarkan `MIDTRANS_SNAP_URL` kosong untuk sandbox.
+3. Di dashboard Midtrans, isi **Notification URL** (webhook) dengan `https://alamat-publik/midtrans/notifikasi`. Alamat ini harus bisa dijangkau dari internet (untuk uji lokal pakai tunnel HTTPS); Go API sendiri tidak dibuka ke publik, karena SvelteKit meneruskan notifikasinya.
+4. Jalankan ulang Go API, buka `/donasi`, dan bayar memakai metode uji dari dokumentasi Midtrans.
+
+**Alur & keamanan**: donasi tersimpan berstatus *menunggu* → muzaki dibawa ke halaman bayar Midtrans → Midtrans memanggil webhook dengan tanda tangan SHA512 → Go memverifikasi tanda tangan **dan** kecocokan jumlah, lalu mengubah status menjadi *diterima* dan menerbitkan nomor kuitansi `KWT/<tahun>/<urut>`. Status tidak pernah berubah hanya karena muzaki kembali ke halaman "selesai". Kuitansi dibuka lewat tautan berkode rahasia 128 bit (`/kuitansi/<kode>`); kode itu tidak dicatat di log. Pembuatan donasi publik dibatasi 5 permintaan per 10 menit per IP.
+
 ## Production
 Ringkas (satu server masjid / VPS kecil):
 
@@ -217,6 +234,7 @@ Ringkas (satu server masjid / VPS kecil):
 7. **Reverse proxy HTTPS** (nginx/caddy) di depan port 3000 saja. Set `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1` supaya IP asli pengguna terbaca untuk penguncian login & audit.
 8. **Health check**: `curl -s http://127.0.0.1:8090/healthz` → `{"ok":true}` (503 bila MySQL tidak menjawab).
 9. **Log**: Go dan SvelteKit menulis JSON ke stdout (field `request_id` sama di keduanya). Kumpulkan dengan journald/Alloy → Loki bila perlu.
+10. **Donasi online** (bila dipakai): `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY` dari secret manager, `MIDTRANS_SNAP_URL` ke alamat Snap **production**, `WEB_ORIGIN=ORIGIN`. Jangan pernah `PAYMENT_PROVIDER=tiruan` (server menolaknya bila `COOKIE_SECURE=true`). Daftarkan `https://alamat-publik/midtrans/notifikasi` sebagai Notification URL di dashboard Midtrans **production**, dan pastikan reverse proxy meneruskan path itu ke frontend. Syarat akun production (dokumen lembaga, kategori donasi/zakat) ditentukan Midtrans; urus langsung ke penyedia sebelum go-live.
 
 ## Troubleshooting
 | Gejala | Penyebab & solusi |
@@ -240,3 +258,9 @@ Ringkas (satu server masjid / VPS kecil):
 | `migrate: isi migrasi yang sudah diterapkan berubah` | File `V*.sql` lama diedit. Kembalikan; perubahan skema = file migrasi **baru**. |
 | `NIK mustahik … tidak terbaca (kunci enkripsi salah atau data rusak)` | Kunci di `.env` berbeda dari saat data dibuat. Pulihkan kunci aslinya. |
 | Test gagal dengan selisih di digit ke-15/16 | Galat floating point; bandingkan dengan toleransi, jangan `==`. |
+| `/donasi` menampilkan "belum diaktifkan" | `PAYMENT_PROVIDER` kosong. Isi `midtrans` (atau `tiruan` untuk dev) di `.env` dan jalankan ulang Go API. |
+| Server: `PAYMENT_PROVIDER=tiruan hanya untuk development` | Penyedia tiruan sengaja ditolak saat `COOKIE_SECURE` bukan `false`. Set `COOKIE_SECURE=false` di dev, atau pakai `midtrans`. |
+| Server: `WEB_ORIGIN wajib diset` / `MIDTRANS_SERVER_KEY wajib diset` | Variabel donasi belum lengkap (lihat bagian "Donasi online"). |
+| Donasi tetap "menunggu" setelah dibayar di Midtrans | Notifikasi belum sampai. Cek Notification URL di dashboard = `https://alamat-publik/midtrans/notifikasi`, alamat itu terjangkau dari internet, dan log Go: `notifikasi gateway ditolak` (tanda tangan/Server Key salah) atau status 409 (jumlah tidak cocok). |
+| Muzaki melihat "Layanan pembayaran sedang bermasalah" | Go tidak bisa membuat transaksi di Midtrans (Server Key salah, jaringan, atau `MIDTRANS_SNAP_URL` keliru). Lihat log Go `payment gateway bermasalah`. |
+| "Terlalu banyak permintaan" di form donasi | Batas 5 donasi baru per 10 menit per IP. Tunggu, atau restart Go API (penghitung di memori). |
