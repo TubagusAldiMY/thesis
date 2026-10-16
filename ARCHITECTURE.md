@@ -88,7 +88,7 @@ Browser ─► SvelteKit hooks.server.ts (request_id, sesi, header keamanan)
 | `penilaian.go` | `SimpanPenilaian`, `AmbilPenilaian` | Hanya draft; skala C3–C5 hanya kunci 1–4; satu sel salah membatalkan paket |
 | `aras.go` | `HitungAras`, `AmbilHasilAras`, `DaftarRun` | Dari draft/dihitung; lengkap; potret bobot + langkah disimpan; run baru = versi naik |
 | `keputusan.go` | `AmbilDetailPeriode`, `Putuskan`, `BukaKembali`, `CatatPenyaluran`, `DaftarPenyaluran`, `TutupPeriode` | Keputusan hanya saat dihitung, catatan wajib bila tolak, satu run sekali diputuskan; penyaluran hanya saat disetujui, hanya usulan run terkini, sekali per penerima, Σ ≤ dana; tutup bila semua usulan tercatat |
-| `laporan.go` | `AmbilDashboard`, `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
+| `laporan.go` | `AmbilDashboard` (+ `ambilKeuangan`), `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; ringkasan keuangan Beranda: zakat dan infak dibukukan **terpisah** (saldo = diterima − tersalur per jenis, bisa negatif), grafik 12 bulan kalender WIB; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
 | `donasi.go` | `BuatDonasiWeb`, `TerimaNotifikasi`, `CatatDonasiManual`, `DaftarDonasi`, `AmbilDonasi`, `BatalkanDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `AmbilDonasiPublik`, `AturGerbang` | Donasi web jadi *diterima* **hanya** dari notifikasi gateway yang tanda tangannya sah dan jumlahnya cocok (baris dikunci `FOR UPDATE`, idempoten: notifikasi ganda/terlambat diabaikan). Nomor kuitansi `KWT/<tahun WIB>/<urut>` tanpa celah (penghitung `donasi_urut` di transaksi yang sama). Kuitansi tidak dihapus, hanya *dibatalkan*. No. HP terenkripsi; penuh hanya untuk Admin pada detail. Jumlah Rp 10.000–100.000.000 |
 
 Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `SetStatusPeriode` (compare-and-set), sehingga dua pengguna yang menekan tombol bersamaan tidak bisa sama-sama menang.
@@ -102,6 +102,7 @@ Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `Se
 | `keputusan.go` | `CreatePersetujuan`, `ListPersetujuan`, `CreatePenyaluran`, `ListPenyaluran` |
 | `kriteria.go`, `mustahik.go`, `periode.go`, `penilaian.go`, `aras.go`, `lookup.go` | Kriteria, mustahik, periode & kandidat, penilaian, run ARAS, query bantu (`GetPeriodeForUpdate`, dll.) |
 | `donasi.go` | `CreateDonasi`, `GetDonasi`/`ByKode`/`ForUpdate`, `UpdateDonasi` (hanya kolom status, bukan data donatur/jumlah), `ListDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `NextNomorKuitansi` (wajib di dalam transaksi) |
+| `keuangan.go` | `PenerimaanPerJenis`, `PenyaluranPerJenis`, `PenerimaanPerBulan`, `PenyaluranPerBulan`: agregat baca-saja untuk Beranda. Hanya donasi `diterima`; bulan donasi digeser +7 jam (WIB) karena `dibayar_pada` disimpan UTC |
 
 Kontrak: store menerima NIK/HP yang **sudah terenkripsi**; setiap query membaca baris `deleted_at IS NULL`; uang `int64` rupiah utuh; bobot `float64` pecahan.
 
@@ -115,7 +116,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `POST /auth/logout` | semua | – | delete `sessions` | 204 |
 | `GET /auth/me` | semua | – | join sessions→users | 200 `{id,username,nama,role}` |
 | `PUT /auth/password` | semua | lama benar, baru ≥ 12 & ≠ lama, kunci 5 gagal | update hash, hapus sesi lain | 204 → 422, 429 |
-| `GET /dashboard` | semua | – | jumlah per asnaf, periode berjalan, stepper, `total_tersalur_semua` (SUM penyaluran semua periode) | 200 |
+| `GET /dashboard` | semua | – | jumlah per asnaf, periode berjalan, stepper, `total_tersalur_semua` (SUM penyaluran semua periode), dan `keuangan`: `zakat`/`infak` {diterima, tersalur, saldo}, total, `diterima_bulan_ini`, `per_jenis`, `bulanan` (12 bulan WIB), `donasi_terbaru` (5, tanpa No. HP) | 200 |
 | `GET /mustahik?q&asnaf&aktif&page&per_page` | admin | q ≤ 100, asnaf sah | SELECT + paging + `asnaf_counts` | 200 `{items,total,asnaf_counts}` |
 | `POST /mustahik` | admin | nama 2–100, NIK 16 digit unik, HP opsional, alamat 5–500, asnaf | enkripsi + INSERT, audit | 201 → 422 |
 | `GET/PUT /mustahik/{id}` | admin | sama; NIK/HP kosong = tetap | UPDATE (nonaktif, bukan hapus) | 200 → 404, 409, 422 |
@@ -153,7 +154,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/` | Landing statis (kriteria, contoh ranking) | publik |
 | `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
-| `/dashboard` | 4 kartu, stepper, periode terbaru | semua |
+| `/dashboard` | Beranda umum masjid: 4 kartu keuangan, dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
 | `/kriteria` | Ubah tipe & bobot dengan indikator total | admin ubah, ketua lihat |
 | `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung | semua / admin |

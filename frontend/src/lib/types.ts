@@ -189,6 +189,47 @@ export interface Dashboard {
 	terbaru: Periode[];
 	/** Realisasi semua periode (rupiah) — dipakai kartu Total tersalur saat tidak ada periode aktif. */
 	total_tersalur_semua: number;
+	keuangan: Keuangan;
+}
+
+/** Pembukuan satu jenis dana. saldo = diterima − tersalur (bisa negatif). */
+export interface DanaJenis {
+	diterima: number;
+	tersalur: number;
+	saldo: number;
+}
+
+/** Penerimaan vs penyaluran dalam satu bulan kalender WIB. */
+export interface ArusBulan {
+	/** "2026-10" */
+	bulan: string;
+	penerimaan: number;
+	penyaluran: number;
+}
+
+/** Satu baris donasi terbaru di Beranda (tanpa No. HP). */
+export interface DonasiTerbaru {
+	id: string;
+	nama: string;
+	jenis: JenisDonasi;
+	jumlah: number;
+	sumber: 'web' | 'petugas';
+	dibayar_pada: string | null;
+}
+
+/** Ringkasan dana masjid di Beranda; zakat dan infak dibukukan terpisah. */
+export interface Keuangan {
+	zakat: DanaJenis;
+	infak: DanaJenis;
+	total_diterima: number;
+	total_tersalur: number;
+	saldo: number;
+	diterima_bulan_ini: number;
+	jumlah_donasi: number;
+	per_jenis: Partial<Record<JenisDonasi, number>>;
+	/** 12 bulan, terlama dulu */
+	bulanan: ArusBulan[];
+	donasi_terbaru: DonasiTerbaru[];
 }
 
 export interface Laporan {

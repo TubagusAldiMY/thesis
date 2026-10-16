@@ -1,12 +1,17 @@
-<!-- Beranda (FR-18): 4 kartu ringkasan, stepper 5 langkah periode aktif, periode terbaru. -->
+<!--
+  Beranda: ringkasan dana masjid secara umum (penerimaan vs penyaluran, zakat dan
+  infak dibukukan terpisah, grafik 12 bulan, donasi terbaru), lalu bagian
+  penyaluran ARAS (stepper periode aktif + periode terbaru).
+-->
 <script lang="ts">
 	import Status from '$lib/components/Status.svelte';
-	import { angka, labelAsnaf, rupiahRingkas } from '$lib/format';
+	import { angka, labelAsnaf, labelBulan, labelJenisDonasi, rupiah, rupiahRingkas, semuaJenisDonasi, tanggal } from '$lib/format';
 	import type { Asnaf } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const d = $derived(data.dash);
+	const k = $derived(d.keuangan);
 	const admin = $derived(data.user.role === 'admin');
 
 	const rincianAsnaf = $derived(
@@ -14,6 +19,19 @@
 			.map(([a, n]) => `${labelAsnaf[a as Asnaf]} ${n}`)
 			.join(' · ')
 	);
+
+	// Grafik batang: tinggi relatif terhadap nilai terbesar (minimal 1 supaya tidak bagi nol).
+	const maksBulan = $derived(Math.max(1, ...k.bulanan.flatMap((b) => [b.penerimaan, b.penyaluran])));
+	const adaArus = $derived(k.bulanan.some((b) => b.penerimaan > 0 || b.penyaluran > 0));
+	const persen = (n: number, maks: number) => `${Math.round((Math.max(0, n) / maks) * 100)}%`;
+
+	const perJenis = $derived(semuaJenisDonasi.map((j) => ({ jenis: j, jumlah: k.per_jenis[j] ?? 0 })));
+	const maksJenis = $derived(Math.max(1, ...perJenis.map((x) => x.jumlah)));
+
+	const dana = $derived([
+		{ nama: 'Dana zakat', ket: 'Fitrah, mal, dan profesi', v: k.zakat },
+		{ nama: 'Dana infak', ket: 'Infak dan sedekah', v: k.infak }
+	]);
 
 	const langkah = ['Pilih kandidat', 'Isi penilaian', 'Hitung ARAS', 'Persetujuan Ketua', 'Penyaluran'];
 	// Ke tab mana tombol utama mengarah, sesuai langkah aktif (indeks 1–5).
@@ -30,41 +48,160 @@
 <svelte:head><title>Beranda · SPK Zakat</title></svelte:head>
 
 <div class="tumpuk">
-	<div>
-		<h1>Assalamu'alaikum, {data.user.nama}</h1>
-		<p class="redup">Ringkasan penyaluran dana masjid.</p>
+	<div class="kartu-kepala sapaan">
+		<div>
+			<h1>Assalamu'alaikum, {data.user.nama}</h1>
+			<p class="redup">Ringkasan dana zakat dan infak masjid.</p>
+		</div>
+		{#if admin}
+			<div class="baris-aksi">
+				<a class="tombol utama" href="/penerimaan/baru">+ Catat donasi</a>
+				<a class="tombol" href="/mustahik/baru">+ Mustahik</a>
+				<a class="tombol" href="/periode/baru">+ Periode</a>
+			</div>
+		{/if}
 	</div>
 
 	<div class="grid-kartu">
 		<div class="kartu ringkas">
-			<p class="redup">Mustahik aktif</p>
-			<p class="besar">{angka(d.mustahik_aktif)}</p>
-			<p class="redup kecil">{rincianAsnaf || 'Belum ada data'}</p>
+			<p class="redup">Diterima bulan ini</p>
+			<p class="besar">{rupiahRingkas(k.diterima_bulan_ini)}</p>
+			<p class="redup kecil">{labelBulan(k.bulanan[k.bulanan.length - 1].bulan)}</p>
 		</div>
 		<div class="kartu ringkas">
-			<p class="redup">Periode berjalan</p>
-			<p class="besar">{d.periode_berjalan}</p>
-			<p class="redup kecil">{keteranganPeriode}</p>
+			<p class="redup">Total penerimaan</p>
+			<p class="besar">{rupiahRingkas(k.total_diterima)}</p>
+			<p class="redup kecil">{k.jumlah_donasi ? `Dari ${angka(k.jumlah_donasi)} donasi` : 'Belum ada donasi tercatat'}</p>
 		</div>
 		<div class="kartu ringkas">
-			<p class="redup">Dana periode aktif</p>
-			<p class="besar">{d.aktif ? rupiahRingkas(d.aktif.periode.dana_tersedia) : '–'}</p>
-			<p class="redup kecil">
-				{d.aktif ? `Kuota ${d.aktif.kuota} penerima × ${rupiahRingkas(d.aktif.periode.nominal_per_penerima)}` : 'Belum ada periode aktif'}
-			</p>
+			<p class="redup">Total penyaluran</p>
+			<p class="besar">{rupiahRingkas(k.total_tersalur)}</p>
+			<p class="redup kecil">{k.total_tersalur ? 'Dari semua periode' : 'Belum ada penyaluran tercatat'}</p>
 		</div>
 		<div class="kartu ringkas">
-			<p class="redup">Total tersalur</p>
-			<!-- Ada periode aktif → realisasi periode itu; tidak ada → total semua periode. -->
-			<p class="besar">{rupiahRingkas(d.aktif ? d.aktif.total_tersalur : d.total_tersalur_semua)}</p>
-			<p class="redup kecil">
-				{#if d.aktif}
-					{d.aktif.total_tersalur ? 'Pada periode aktif' : 'Belum ada penyaluran pada periode aktif'}
-				{:else}
-					{d.total_tersalur_semua ? 'Dari semua periode' : 'Belum ada penyaluran tercatat'}
-				{/if}
-			</p>
+			<p class="redup">Saldo tercatat</p>
+			<p class="besar" class:minus={k.saldo < 0}>{rupiahRingkas(k.saldo)}</p>
+			<p class="redup kecil">Penerimaan dikurangi penyaluran yang tercatat di aplikasi</p>
 		</div>
+	</div>
+
+	<section class="dua">
+		{#each dana as x (x.nama)}
+			<div class="kartu dana">
+				<div>
+					<h2>{x.nama}</h2>
+					<p class="redup kecil">{x.ket}</p>
+				</div>
+				<dl>
+					<div><dt>Diterima</dt><dd class="angka">{rupiah(x.v.diterima)}</dd></div>
+					<div><dt>Tersalur</dt><dd class="angka">{rupiah(x.v.tersalur)}</dd></div>
+					<div class="saldo"><dt>Saldo</dt><dd class="angka" class:minus={x.v.saldo < 0}>{rupiah(x.v.saldo)}</dd></div>
+				</dl>
+				<div
+					class="bar"
+					role="progressbar"
+					aria-label="Bagian {x.nama.toLowerCase()} yang sudah tersalur"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					aria-valuenow={x.v.diterima ? Math.min(100, Math.round((x.v.tersalur / x.v.diterima) * 100)) : 0}
+				>
+					<span style:width={x.v.diterima ? persen(Math.min(x.v.tersalur, x.v.diterima), x.v.diterima) : '0%'}></span>
+				</div>
+			</div>
+		{/each}
+	</section>
+
+	<section class="kartu">
+		<div class="kartu-kepala">
+			<div>
+				<h2>Penerimaan dan penyaluran 12 bulan terakhir</h2>
+				<p class="redup kecil">Per bulan kalender (WIB).</p>
+			</div>
+			<ul class="legenda" aria-hidden="true">
+				<li><span class="titik masuk"></span>Penerimaan</li>
+				<li><span class="titik keluar"></span>Penyaluran</li>
+			</ul>
+		</div>
+		{#if !adaArus}
+			<p class="redup kosong-kecil">Belum ada penerimaan atau penyaluran dalam 12 bulan terakhir.</p>
+		{:else}
+			<div class="grafik" role="img" aria-label="Grafik batang penerimaan dan penyaluran per bulan; angka lengkap ada di tabel di bawahnya">
+				{#each k.bulanan as b (b.bulan)}
+					<div class="kolom" title="{labelBulan(b.bulan)}: diterima {rupiah(b.penerimaan)}, tersalur {rupiah(b.penyaluran)}">
+						<div class="pasangan">
+							<span class="batang masuk" style:height={persen(b.penerimaan, maksBulan)}></span>
+							<span class="batang keluar" style:height={persen(b.penyaluran, maksBulan)}></span>
+						</div>
+						<small>{labelBulan(b.bulan).split(' ')[0]}</small>
+					</div>
+				{/each}
+			</div>
+			<details class="angka-grafik">
+				<summary>Lihat angka per bulan</summary>
+				<div class="tabel-wadah">
+					<table>
+						<thead><tr><th>Bulan</th><th class="kanan">Diterima (Rp)</th><th class="kanan">Tersalur (Rp)</th></tr></thead>
+						<tbody>
+							{#each k.bulanan as b (b.bulan)}
+								<tr><td>{labelBulan(b.bulan)}</td><td class="kanan angka">{angka(b.penerimaan)}</td><td class="kanan angka">{angka(b.penyaluran)}</td></tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</details>
+		{/if}
+	</section>
+
+	<section class="dua">
+		<div class="kartu">
+			<div class="kartu-kepala">
+				<h2>Penerimaan menurut jenis</h2>
+			</div>
+			<ul class="jenis">
+				{#each perJenis as x (x.jenis)}
+					<li>
+						<span>{labelJenisDonasi[x.jenis]}</span>
+						<span class="bar" aria-hidden="true"><span style:width={persen(x.jumlah, maksJenis)}></span></span>
+						<span class="angka">{rupiah(x.jumlah)}</span>
+					</li>
+				{/each}
+			</ul>
+		</div>
+
+		<div class="kartu">
+			<div class="kartu-kepala">
+				<h2>Donasi terbaru</h2>
+				<a class="tombol" href="/penerimaan">Lihat semua</a>
+			</div>
+			{#if k.donasi_terbaru.length === 0}
+				<div class="kosong">
+					<p><strong>Belum ada donasi</strong></p>
+					<p class="redup">{admin ? 'Catat donasi tunai atau transfer yang masuk.' : 'Belum ada donasi yang diterima.'}</p>
+					{#if admin}<a class="tombol utama" href="/penerimaan/baru">Catat donasi</a>{/if}
+				</div>
+			{:else}
+				<ul class="terbaru">
+					{#each k.donasi_terbaru as x (x.id)}
+						<li>
+							<div>
+								<a href="/penerimaan/{x.id}"><strong>{x.nama}</strong></a>
+								<p class="redup kecil">
+									{labelJenisDonasi[x.jenis]} · {x.sumber === 'web' ? 'Online' : 'Petugas'}{x.dibayar_pada ? ` · ${tanggal(x.dibayar_pada)}` : ''}
+								</p>
+							</div>
+							<span class="angka">{rupiah(x.jumlah)}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	</section>
+
+	<div class="judul-bagian">
+		<h2>Penyaluran (metode ARAS)</h2>
+		<p class="redup">
+			<strong>{angka(d.mustahik_aktif)}</strong> mustahik aktif{rincianAsnaf ? ` · ${rincianAsnaf}` : ''}
+		</p>
 	</div>
 
 	{#if d.aktif}
@@ -73,6 +210,9 @@
 			<div class="kartu-kepala">
 				<div>
 					<h2>{a.periode.nama}</h2>
+					<p class="redup">
+						{keteranganPeriode} · Dana {rupiahRingkas(a.periode.dana_tersedia)}, kuota {a.kuota} penerima × {rupiahRingkas(a.periode.nominal_per_penerima)}
+					</p>
 					<p class="redup">
 						Langkah berikutnya: {a.periode.status === 'ditolak' ? 'Buka kembali & perbaiki penilaian' : langkah[a.langkah_aktif - 1]}
 					</p>
@@ -101,9 +241,9 @@
 		</div>
 		{#if d.terbaru.length === 0}
 			<div class="kosong">
-				<p><strong>Belum ada data</strong></p>
+				<p><strong>Belum ada periode</strong></p>
 				<p class="redup">
-					{admin ? 'Mulai dengan menambah mustahik, lalu buat periode penyaluran pertama.' : 'Admin belum membuat periode penyaluran.'}
+					{admin ? 'Tambah mustahik, lalu buat periode penyaluran pertama.' : 'Admin belum membuat periode penyaluran.'}
 				</p>
 				{#if admin}<a class="tombol utama" href="/mustahik/baru">Tambah mustahik</a>{/if}
 			</div>
@@ -137,17 +277,164 @@
 </div>
 
 <style>
+	.sapaan {
+		align-items: center;
+		margin-bottom: 0;
+	}
 	.ringkas {
 		display: grid;
 		gap: 0.35rem;
+		align-content: start;
 	}
 	.besar {
-		font-size: 2.3rem;
+		font-size: 2rem;
 		font-weight: 700;
 		line-height: 1.1;
 	}
 	.kecil {
 		font-size: 0.9rem;
+	}
+	.minus {
+		color: var(--merah);
+	}
+	.dua {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+		gap: 1rem;
+	}
+	.dana {
+		display: grid;
+		gap: 0.9rem;
+		align-content: start;
+	}
+	.dana dl {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.75rem;
+		margin: 0;
+	}
+	.dana dt {
+		color: var(--teks-redup);
+		font-size: 0.85rem;
+	}
+	.dana dd {
+		margin: 0;
+		font-weight: 600;
+	}
+	.dana .saldo dd {
+		color: var(--hijau);
+	}
+	.dana .saldo dd.minus {
+		color: var(--merah);
+	}
+	.bar {
+		height: 8px;
+		background: var(--abu);
+		border-radius: 99px;
+		overflow: hidden;
+	}
+	.bar span {
+		display: block;
+		height: 100%;
+		background: var(--hijau);
+	}
+	.legenda {
+		display: flex;
+		gap: 1rem;
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--teks-redup);
+	}
+	.titik {
+		display: inline-block;
+		width: 10px;
+		height: 10px;
+		border-radius: 3px;
+		margin-right: 0.35rem;
+	}
+	.masuk {
+		background: var(--hijau);
+	}
+	.keluar {
+		background: var(--kuning-garis);
+	}
+	.grafik {
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		gap: 0.35rem;
+		align-items: end;
+	}
+	.kolom {
+		display: grid;
+		gap: 0.35rem;
+		justify-items: center;
+	}
+	.pasangan {
+		display: flex;
+		align-items: flex-end;
+		gap: 2px;
+		height: 150px;
+		width: 100%;
+		justify-content: center;
+	}
+	.batang {
+		display: block;
+		width: min(40%, 14px);
+		min-height: 2px;
+		border-radius: 3px 3px 0 0;
+	}
+	.kolom small {
+		color: var(--teks-redup);
+		font-size: 0.75rem;
+	}
+	.angka-grafik {
+		margin-top: 1rem;
+	}
+	.angka-grafik summary {
+		cursor: pointer;
+		color: var(--hijau);
+		font-weight: 600;
+	}
+	.jenis,
+	.terbaru {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: grid;
+		gap: 0.75rem;
+	}
+	.jenis li {
+		display: grid;
+		grid-template-columns: 7.5rem 1fr auto;
+		gap: 0.75rem;
+		align-items: center;
+	}
+	.terbaru li {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		align-items: baseline;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--garis);
+	}
+	.terbaru li:last-child {
+		border-bottom: 0;
+		padding-bottom: 0;
+	}
+	.terbaru p {
+		margin: 0;
+	}
+	.terbaru .angka,
+	.dana dd {
+		white-space: nowrap; /* "Rp 600.000" tidak boleh terpecah di HP */
+	}
+	.judul-bagian {
+		margin-top: 0.5rem;
+	}
+	.kosong-kecil {
+		padding: 1rem 0;
 	}
 	.stepper {
 		list-style: none;
@@ -189,6 +476,25 @@
 	@media (max-width: 900px) {
 		.stepper {
 			grid-template-columns: 1fr;
+		}
+	}
+	@media (max-width: 520px) {
+		/* Tiga kolom terlalu sempit di HP: tumpuk, label kiri dan angka kanan. */
+		.dana dl {
+			grid-template-columns: 1fr;
+			gap: 0.4rem;
+		}
+		.dana dl > div {
+			display: flex;
+			justify-content: space-between;
+			gap: 1rem;
+		}
+		.jenis li {
+			grid-template-columns: 1fr auto;
+		}
+		.jenis li .bar {
+			grid-column: 1 / -1;
+			order: 3;
 		}
 	}
 </style>

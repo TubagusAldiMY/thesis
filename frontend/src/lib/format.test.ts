@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	angka,
 	desimal,
+	labelBulan,
 	parseAngka,
 	parseDesimal,
 	parseNilai,
@@ -113,6 +114,17 @@ describe('namaMetode', () => {
 		['metode_baru_gateway', 'metode_baru_gateway'], // tak dikenal: tampil apa adanya
 		['', '-']
 	])('namaMetode(%j) = %s', (m, mau) => expect(namaMetode(m)).toBe(mau));
+});
+
+describe('labelBulan', () => {
+	it.each([
+		['2026-10', 'Okt 2026'],
+		['2026-01', 'Jan 2026'],
+		['2025-12', 'Des 2025'],
+		['2026-13', '2026-13'], // bukan bulan: apa adanya
+		['2026-00', '2026-00'],
+		['', '']
+	])('labelBulan(%j) = %j', (ym, mau) => expect(labelBulan(ym)).toBe(mau));
 });
 
 describe('nomor WhatsApp', () => {

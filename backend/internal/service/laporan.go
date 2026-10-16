@@ -34,6 +34,114 @@ type Dashboard struct {
 	// TotalTersalurSemua = realisasi semua periode; ditampilkan saat Aktif nil
 	// supaya kartu "Total tersalur" tidak jatuh ke Rp 0 setelah periode ditutup.
 	TotalTersalurSemua int64 `json:"total_tersalur_semua"`
+	// Keuangan = ringkasan dana masjid secara umum (penerimaan vs penyaluran).
+	Keuangan Keuangan `json:"keuangan"`
+}
+
+// DanaJenis = pembukuan satu jenis dana. Saldo = Diterima − Tersalur; bisa
+// negatif bila ada penyaluran dari sebelum donasi dicatat di aplikasi ini.
+type DanaJenis struct {
+	Diterima int64 `json:"diterima"`
+	Tersalur int64 `json:"tersalur"`
+	Saldo    int64 `json:"saldo"`
+}
+
+// ArusBulan = penerimaan donasi dan penyaluran dalam satu bulan kalender WIB.
+type ArusBulan struct {
+	Bulan      string `json:"bulan"` // "2026-10"
+	Penerimaan int64  `json:"penerimaan"`
+	Penyaluran int64  `json:"penyaluran"`
+}
+
+// DonasiTerbaru = satu baris daftar donasi terbaru di Beranda. Sengaja tanpa
+// No. HP: Beranda hanya butuh siapa, berapa, dan kapan.
+type DonasiTerbaru struct {
+	ID          string              `json:"id"`
+	Nama        string              `json:"nama"`
+	Jenis       domain.JenisDonasi  `json:"jenis"`
+	Jumlah      int64               `json:"jumlah"`
+	Sumber      domain.SumberDonasi `json:"sumber"`
+	DibayarPada *time.Time          `json:"dibayar_pada"`
+}
+
+// Keuangan = isi bagian "dana masjid" di Beranda. Zakat dan infak dibukukan
+// terpisah (dana zakat hanya boleh disalurkan ke delapan asnaf), sehingga
+// saldonya tidak digabung per jenis.
+type Keuangan struct {
+	Zakat            DanaJenis                    `json:"zakat"`
+	Infak            DanaJenis                    `json:"infak"`
+	TotalDiterima    int64                        `json:"total_diterima"`
+	TotalTersalur    int64                        `json:"total_tersalur"`
+	Saldo            int64                        `json:"saldo"`
+	DiterimaBulanIni int64                        `json:"diterima_bulan_ini"`
+	JumlahDonasi     int                          `json:"jumlah_donasi"`
+	PerJenis         map[domain.JenisDonasi]int64 `json:"per_jenis"`
+	Bulanan          []ArusBulan                  `json:"bulanan"` // 12 bulan, terlama dulu
+	DonasiTerbaru    []DonasiTerbaru              `json:"donasi_terbaru"`
+}
+
+// ambilKeuangan menyusun Keuangan dari beberapa agregat kecil. Hanya donasi
+// berstatus diterima yang dihitung; bulan mengikuti kalender WIB.
+func (s *Service) ambilKeuangan(ctx context.Context) (Keuangan, error) {
+	gagal := func(err error) (Keuangan, error) {
+		return Keuangan{}, fmt.Errorf("service.ambilKeuangan: %w", err)
+	}
+	terima, err := s.st.PenerimaanPerJenis(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	salur, err := s.st.PenyaluranPerJenis(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	// 12 bulan berakhir bulan ini; time.Date menormalkan bulan <= 0 ke tahun lalu.
+	now := s.sekarang().In(wib)
+	bulan := make([]string, 12)
+	for i := range bulan {
+		bulan[i] = time.Date(now.Year(), now.Month()-time.Month(11-i), 1, 0, 0, 0, 0, wib).Format("2006-01")
+	}
+	masuk, err := s.st.PenerimaanPerBulan(ctx, bulan[0])
+	if err != nil {
+		return gagal(err)
+	}
+	keluar, err := s.st.PenyaluranPerBulan(ctx, bulan[0])
+	if err != nil {
+		return gagal(err)
+	}
+	ringkas, err := s.st.RingkasDonasi(ctx)
+	if err != nil {
+		return gagal(err)
+	}
+	terbaru, err := s.st.ListDonasi(ctx, store.DonasiFilter{Status: domain.DonasiDiterima, Page: 1, PerPage: 5})
+	if err != nil {
+		return gagal(err)
+	}
+
+	jenis := func(diterima, tersalur int64) DanaJenis {
+		return DanaJenis{Diterima: diterima, Tersalur: tersalur, Saldo: diterima - tersalur}
+	}
+	k := Keuangan{
+		Zakat: jenis(terima[domain.DonasiZakatFitrah]+terima[domain.DonasiZakatMal]+terima[domain.DonasiZakatProfesi], salur[domain.JenisZakat]),
+		Infak: jenis(terima[domain.DonasiInfak], salur[domain.JenisInfak]),
+		// JumlahDonasi = jumlah kuitansi aktif (status diterima).
+		JumlahDonasi:     ringkas.JumlahDiterima,
+		DiterimaBulanIni: masuk[bulan[11]],
+		PerJenis:         terima,
+		Bulanan:          make([]ArusBulan, len(bulan)),
+		DonasiTerbaru:    make([]DonasiTerbaru, 0, len(terbaru.Items)),
+	}
+	k.TotalDiterima = k.Zakat.Diterima + k.Infak.Diterima
+	k.TotalTersalur = k.Zakat.Tersalur + k.Infak.Tersalur
+	k.Saldo = k.TotalDiterima - k.TotalTersalur
+	for i, b := range bulan {
+		k.Bulanan[i] = ArusBulan{Bulan: b, Penerimaan: masuk[b], Penyaluran: keluar[b]}
+	}
+	for _, d := range terbaru.Items {
+		k.DonasiTerbaru = append(k.DonasiTerbaru, DonasiTerbaru{
+			ID: d.ID, Nama: d.Nama, Jenis: d.Jenis, Jumlah: d.Jumlah, Sumber: d.Sumber, DibayarPada: d.DibayarPada,
+		})
+	}
+	return k, nil
 }
 
 // langkahAktif menentukan posisi stepper dari data periode.
@@ -67,7 +175,11 @@ func (s *Service) AmbilDashboard(ctx context.Context) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("service.AmbilDashboard: %w", err)
 	}
-	d := Dashboard{AsnafCounts: m.AsnafCounts, Terbaru: ps, TotalTersalurSemua: total}
+	keu, err := s.ambilKeuangan(ctx)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	d := Dashboard{AsnafCounts: m.AsnafCounts, Terbaru: ps, TotalTersalurSemua: total, Keuangan: keu}
 	for _, n := range m.AsnafCounts {
 		d.MustahikAktif += n
 	}

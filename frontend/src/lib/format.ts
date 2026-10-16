@@ -223,6 +223,14 @@ export function namaMetode(m: string): string {
 	return labelMetode[m] ?? (m || '-');
 }
 
+const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+/** "2026-10" → "Okt 2026"; bentuk lain dikembalikan apa adanya. */
+export function labelBulan(ym: string): string {
+	const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(ym);
+	return m ? `${namaBulan[Number(m[2]) - 1]} ${m[1]}` : ym;
+}
+
 /** Tautan "kirim via WhatsApp" dengan teks terisi; null bila nomornya tidak valid. */
 export function tautanWA(hp: string, teks: string): string | null {
 	const n = nomorWA(hp);

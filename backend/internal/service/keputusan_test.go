@@ -153,6 +153,9 @@ func TestPenyaluran_AturanLaluTutupDanLaporan(t *testing.T) {
 	// tetap tahu total yang sudah tersalur (dulu kartu jatuh ke Rp 0).
 	if d, err := c.e.svc.AmbilDashboard(bg); err != nil || d.Aktif != nil || d.TotalTersalurSemua != 3_000_000 {
 		t.Fatalf("dashboard setelah tutup: err=%v aktif=%v total=%d, mau nil & 3000000", err, d.Aktif, d.TotalTersalurSemua)
+	} else if k := d.Keuangan; k.Zakat.Tersalur != 3_000_000 || k.Infak.Tersalur != 0 || k.TotalTersalur != 3_000_000 || k.Saldo != -3_000_000 {
+		// Periode contoh berjenis zakat; belum ada donasi diterima, jadi saldo negatif.
+		t.Fatalf("keuangan setelah tutup: %+v", k)
 	}
 
 	l, err := c.e.svc.AmbilLaporan(bg, c.periode.ID)
