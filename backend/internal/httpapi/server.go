@@ -19,9 +19,11 @@ import (
 	"net/http"
 	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"spkzakat/internal/domain"
+	"spkzakat/internal/payment"
 	"spkzakat/internal/service"
 )
 
@@ -34,12 +36,34 @@ type API struct {
 	log          *slog.Logger
 	cookieSecure bool
 	ping         func(context.Context) error
+
+	// Pembatas laju endpoint publik (donasi), per IP klien. Disimpan di memori:
+	// hilang saat server restart, cukup untuk satu proses (lihat batas.go).
+	batasBuat     *batasLaju
+	batasBaca     *batasLaju
+	simulasiBayar *payment.Tiruan // non-nil hanya bila penyedia tiruan menyala (dev/demo)
 }
+
+// Opsi mengubah API saat dibangun, supaya New tetap kompatibel dengan pemanggil lama.
+type Opsi func(*API)
+
+// DenganSimulasiBayar membuka endpoint simulasi pembayaran untuk penyedia
+// tiruan. JANGAN dipasang di production: siapa pun yang tahu kode donasi
+// bisa menandainya lunas.
+func DenganSimulasiBayar(t *payment.Tiruan) Opsi { return func(a *API) { a.simulasiBayar = t } }
 
 // New membangun http.Handler lengkap. cookieSecure=false hanya untuk
 // development lewat http:// (curl); production wajib true. ping dipakai /healthz.
-func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(context.Context) error) http.Handler {
-	a := &API{svc: svc, log: log, cookieSecure: cookieSecure, ping: ping}
+func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(context.Context) error, opsi ...Opsi) http.Handler {
+	a := &API{
+		svc: svc, log: log, cookieSecure: cookieSecure, ping: ping,
+		// 5 donasi baru per 10 menit dan 120 pembacaan status per menit per IP.
+		batasBuat: batasLajuBaru(5, 10*time.Minute),
+		batasBaca: batasLajuBaru(120, time.Minute),
+	}
+	for _, o := range opsi {
+		o(a)
+	}
 	admin := []domain.Role{domain.RoleAdmin}
 	semua := []domain.Role{domain.RoleAdmin, domain.RoleKetua}
 	ketua := []domain.Role{domain.RoleKetua}
@@ -77,6 +101,27 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	mux.Handle("GET /api/periode/{id}/laporan", a.peran(a.laporan, semua...))
 
 	mux.Handle("GET /api/audit", a.peran(a.audit, semua...))
+
+	// Donasi — pengurus (butuh sesi). Rute literal ("ringkas", "dibaca") menang
+	// atas {id} karena lebih spesifik.
+	mux.Handle("GET /api/donasi", a.peran(a.daftarDonasi, semua...))
+	mux.Handle("POST /api/donasi", a.peran(a.catatDonasi, admin...))
+	mux.Handle("GET /api/donasi/ringkas", a.peran(a.ringkasDonasi, semua...))
+	mux.Handle("POST /api/donasi/dibaca", a.peran(a.tandaiDonasiDilihat, semua...))
+	mux.Handle("GET /api/donasi/{id}", a.peran(a.ambilDonasi, semua...))
+	mux.Handle("POST /api/donasi/{id}/batal", a.peran(a.batalkanDonasi, admin...))
+
+	// Donasi — PUBLIK (tanpa sesi; ini satu-satunya kelompok rute tanpa peran()
+	// selain login/healthz). Dijaga pembatas laju per IP, validasi ketat di
+	// service, dan kode rahasia 128 bit untuk akses ke satu donasi. Notifikasi
+	// gateway dijaga tanda tangan SHA512, bukan sesi.
+	mux.HandleFunc("GET /api/publik/donasi-aktif", a.donasiAktif)
+	mux.Handle("POST /api/publik/donasi", a.batasi(a.batasBuat, a.buatDonasiWeb))
+	mux.Handle("GET /api/publik/donasi/{kode}", a.batasi(a.batasBaca, a.donasiPublik))
+	mux.HandleFunc("POST /api/publik/midtrans/notifikasi", a.notifikasiGerbang)
+	if a.simulasiBayar != nil {
+		mux.Handle("POST /api/publik/tiruan/{kode}/bayar", a.batasi(a.batasBuat, a.simulasikanBayar))
+	}
 
 	// Urutan luar → dalam: request_id paling luar supaya semua (termasuk
 	// panic) punya ID; log akses mencatat status akhir; recover di dalamnya
@@ -160,9 +205,21 @@ func (a *API) logAkses(next http.Handler) http.Handler {
 			level = slog.LevelError
 		}
 		a.log.Log(r.Context(), level, "http",
-			"request_id", requestIDDari(r.Context()), "method", r.Method, "path", r.URL.Path,
+			"request_id", requestIDDari(r.Context()), "method", r.Method, "path", pathLog(r.URL.Path),
 			"status", p.status, "duration_ms", time.Since(mulai).Milliseconds(), "user_id", userID)
 	})
+}
+
+// pathLog menyembunyikan segmen rahasia sebelum path masuk log. Kode donasi
+// adalah kunci tautan kuitansi muzaki (siapa pun yang memegangnya bisa
+// membukanya), jadi tidak boleh tercatat di log akses maupun log galat.
+func pathLog(path string) string {
+	for _, awalan := range []string{"/api/publik/donasi/", "/api/publik/tiruan/"} {
+		if strings.HasPrefix(path, awalan) {
+			return awalan + "{kode}"
+		}
+	}
+	return path
 }
 
 // recover mengubah panic menjadi 500 tanpa membocorkan stack trace ke klien.
@@ -273,8 +330,13 @@ func (a *API) gagal(w http.ResponseWriter, r *http.Request, err error) {
 		a.tulisError(w, r, http.StatusConflict, "Data bertentangan dengan keadaan saat ini. Muat ulang halaman lalu coba lagi", nil)
 	case errors.Is(err, domain.ErrNotFound):
 		a.tulisError(w, r, http.StatusNotFound, "Data tidak ditemukan", nil)
+	case errors.Is(err, domain.ErrNonaktif):
+		a.tulisError(w, r, http.StatusServiceUnavailable, "Fitur ini belum diaktifkan oleh pengurus masjid", nil)
+	case errors.Is(err, domain.ErrGerbang):
+		a.logger(r).Error("payment gateway bermasalah", "path", pathLog(r.URL.Path), "error", err.Error())
+		a.tulisError(w, r, http.StatusBadGateway, "Layanan pembayaran sedang bermasalah. Coba lagi beberapa saat", nil)
 	default:
-		a.logger(r).Error("kesalahan internal", "path", r.URL.Path, "error", err.Error())
+		a.logger(r).Error("kesalahan internal", "path", pathLog(r.URL.Path), "error", err.Error())
 		a.tulisError(w, r, http.StatusInternalServerError, "Terjadi kesalahan internal", nil)
 	}
 }

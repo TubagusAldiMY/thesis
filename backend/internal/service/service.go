@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"spkzakat/internal/crypto"
 	"spkzakat/internal/domain"
@@ -32,12 +33,18 @@ type Service struct {
 	idx *crypto.Hasher
 	// batas = penghitung login/ganti password gagal (lihat auth.go).
 	batas *pembatas
+	// gerbang = payment gateway donasi web; nil = donasi web nonaktif (donasi.go).
+	gerbang domain.GerbangBayar
+	// urlWeb = alamat publik frontend untuk tujuan pengalihan setelah bayar.
+	urlWeb string
+	// sekarang = sumber waktu; diganti di test supaya nomor kuitansi bisa diuji.
+	sekarang func() time.Time
 }
 
 // New membuat Service. enc mengenkripsi NIK/No. HP; idx menghitung HMAC NIK
 // untuk deteksi duplikat. Keduanya HARUS memakai kunci berbeda.
 func New(st *store.Store, enc *crypto.Cipher, idx *crypto.Hasher) *Service {
-	return &Service{st: st, enc: enc, idx: idx, batas: pembatasBaru()}
+	return &Service{st: st, enc: enc, idx: idx, batas: pembatasBaru(), sekarang: time.Now}
 }
 
 // galat mengumpulkan pesan validasi per field; pesan PERTAMA tiap field yang
@@ -102,6 +109,7 @@ var KategoriAudit = map[string][]string{
 	"hitung":     {domain.AksiHitung},
 	"keputusan":  {domain.AksiSetuju, domain.AksiTolak, domain.AksiBukaKembali},
 	"penyaluran": {domain.AksiSalur, domain.AksiTutup},
+	"donasi":     {domain.AksiDonasiTerima, domain.AksiDonasiCatat, domain.AksiDonasiBatal},
 }
 
 // AuditHalaman = satu halaman audit log.

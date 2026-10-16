@@ -13,11 +13,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"spkzakat/internal/crypto"
 	"spkzakat/internal/httpapi"
+	"spkzakat/internal/payment"
 	"spkzakat/internal/service"
 	"spkzakat/internal/store"
 )
@@ -30,6 +32,13 @@ type config struct {
 	kunciHMAC    []byte
 	cookieSecure bool
 	logLevel     slog.Level
+
+	// Donasi web (opsional). provider kosong = halaman donasi publik nonaktif,
+	// pencatatan donasi oleh petugas tetap berfungsi.
+	provider    string // "" | "midtrans" | "tiruan"
+	midtransKey string
+	midtransURL string // kosong = sandbox
+	webOrigin   string // alamat publik frontend, tujuan pengalihan setelah bayar
 }
 
 func muatConfig() (config, error) {
@@ -50,7 +59,51 @@ func muatConfig() (config, error) {
 	if err := c.logLevel.UnmarshalText([]byte(os.Getenv("LOG_LEVEL"))); err != nil {
 		c.logLevel = slog.LevelInfo // kosong / tidak dikenal → info
 	}
+
+	c.provider = os.Getenv("PAYMENT_PROVIDER")
+	c.midtransKey = os.Getenv("MIDTRANS_SERVER_KEY")
+	c.midtransURL = os.Getenv("MIDTRANS_SNAP_URL")
+	c.webOrigin = os.Getenv("WEB_ORIGIN")
+	switch c.provider {
+	case "":
+	case "midtrans", "tiruan":
+		if !strings.HasPrefix(c.webOrigin, "http://") && !strings.HasPrefix(c.webOrigin, "https://") {
+			return c, errors.New("WEB_ORIGIN wajib diset (mis. https://zakat.masjid.id) bila PAYMENT_PROVIDER aktif")
+		}
+		if c.provider == "midtrans" && c.midtransKey == "" {
+			return c, errors.New("MIDTRANS_SERVER_KEY wajib diset bila PAYMENT_PROVIDER=midtrans")
+		}
+		// Penyedia tiruan membuka endpoint "tandai lunas" tanpa pembayaran. COOKIE_SECURE
+		// bawaan true menandai server sungguhan di belakang HTTPS: tolak di sana.
+		if c.provider == "tiruan" && c.cookieSecure {
+			return c, errors.New("PAYMENT_PROVIDER=tiruan hanya untuk development: set COOKIE_SECURE=false, atau pakai midtrans")
+		}
+	default:
+		return c, errors.New("PAYMENT_PROVIDER harus kosong, midtrans, atau tiruan")
+	}
 	return c, nil
+}
+
+// pasangGerbang memasang payment gateway sesuai konfigurasi dan mengembalikan
+// opsi HTTP yang menyertainya (simulasi bayar, khusus penyedia tiruan).
+func pasangGerbang(cfg config, svc *service.Service, log *slog.Logger) ([]httpapi.Opsi, error) {
+	switch cfg.provider {
+	case "midtrans":
+		m, err := payment.NewMidtrans(cfg.midtransKey, cfg.midtransURL)
+		if err != nil {
+			return nil, err
+		}
+		svc.AturGerbang(m, cfg.webOrigin)
+		log.Info("donasi web aktif", "provider", "midtrans")
+	case "tiruan":
+		t := payment.NewTiruan()
+		svc.AturGerbang(t, cfg.webOrigin)
+		log.Warn("PENYEDIA PEMBAYARAN TIRUAN MENYALA: hanya untuk development/demo, bukan pembayaran sungguhan")
+		return []httpapi.Opsi{httpapi.DenganSimulasiBayar(t)}, nil
+	default:
+		log.Info("donasi web nonaktif (PAYMENT_PROVIDER kosong); pencatatan oleh petugas tetap berfungsi")
+	}
+	return nil, nil
 }
 
 func main() {
@@ -83,10 +136,15 @@ func main() {
 		os.Exit(1)
 	}
 	svc := service.New(st, enc, idx)
+	opsi, err := pasangGerbang(cfg, svc, log)
+	if err != nil {
+		log.Error("payment gateway", "error", err.Error())
+		os.Exit(1)
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.addr,
-		Handler:           httpapi.New(svc, log, cfg.cookieSecure, st.Ping),
+		Handler:           httpapi.New(svc, log, cfg.cookieSecure, st.Ping, opsi...),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

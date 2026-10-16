@@ -45,6 +45,11 @@ services:
       # false karena diakses lewat http://localhost; wajib true bila sudah di belakang HTTPS.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Donasi online. PAYMENT_PROVIDER kosong = halaman /donasi nonaktif (lihat .env.example).
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_SNAP_URL: ${MIDTRANS_SNAP_URL:-}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3101}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz >/dev/null || exit 1"]
       interval: 10s
