@@ -68,8 +68,10 @@ services:
       # Harus sama persis dengan alamat yang diketik di browser (cek CSRF).
       ORIGIN: ${WEB_ORIGIN:-http://localhost:3101}
       PUBLIC_MASJID_NAMA: ${PUBLIC_MASJID_NAMA:-Masjid Jami Al-Barokah}
-      PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-Jl. Contoh No. 1, Kota}
-      PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-0812-0000-0000}
+      # Alamat/kontak diisi di .env. Bawaannya KOSONG (bukan contoh palsu): yang kosong tidak tampil
+      # di footer landing, sedangkan kop laporan/kuitansi hanya memuat yang terisi.
+      PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-}
+      PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-}
       # Logo masjid (berkas di frontend/static/, perlu build ulang). Kosong = logo bawaan /logo-masjid.jpg.
       PUBLIC_MASJID_LOGO: ${PUBLIC_MASJID_LOGO:-}
       # Foto hero landing (opsional) dan koordinat masjid untuk jadwal salat (bawaan: Pamulang).

@@ -158,7 +158,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/` | Landing masjid: navigasi pil melayang dengan tombol Donasi, hero hijau tua beraksen emas (foto opsional `PUBLIC_MASJID_FOTO`), **jadwal salat hari ini** + penanda salat berikutnya, ragam zakat/infak + ajakan donasi, **transparansi dana** (angka agregat dari `GET /publik/ringkasan`; bagian disembunyikan bila API gagal atau belum ada data), cara penyaluran ARAS ringkas, kontak. Logo masjid (`/logo-masjid.jpg`, bisa diganti lewat `PUBLIC_MASJID_LOGO`) dipakai juga di login, sidebar, kuitansi, kop laporan, dan favicon | publik |
 | `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
-| `/dashboard` | Beranda umum masjid: 4 kartu keuangan, dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
+| `/dashboard` | Beranda umum masjid bertema sama dengan landing (hero hijau tua berpola + ubin kaca 4 angka utama, tombol emas, **jadwal salat** hari ini): dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
 | `/kriteria` | Edit nama, tipe, bobot, skala nilai (teks "1 = sehat", satu pilihan per baris), aktif/nonaktif, dan **tambah kriteria baru**; indikator total/aturan dihitung di layar, aturan akhir dijaga Go | admin ubah, ketua lihat |
 | `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung | semua / admin |

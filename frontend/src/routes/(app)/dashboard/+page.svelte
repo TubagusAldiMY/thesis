@@ -4,8 +4,10 @@
   penyaluran ARAS (stepper periode aktif + periode terbaru).
 -->
 <script lang="ts">
+	import JadwalSalat from '$lib/components/JadwalSalat.svelte';
 	import Status from '$lib/components/Status.svelte';
 	import { angka, labelAsnaf, labelBulan, labelJenisDonasi, rupiah, rupiahRingkas, semuaJenisDonasi, tanggal } from '$lib/format';
+	import { masjid } from '$lib/masjid';
 	import type { Asnaf } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -47,42 +49,66 @@
 
 <svelte:head><title>Beranda · SPK Zakat</title></svelte:head>
 
-<div class="tumpuk">
-	<div class="kartu-kepala sapaan">
-		<div>
-			<h1>Assalamu'alaikum, {data.user.nama}</h1>
-			<p class="redup">Ringkasan dana zakat dan infak masjid.</p>
+<div class="tumpuk dash">
+	<!-- Hero hijau tua beraksen emas, senada dengan landing publik. -->
+	<section class="hero">
+		<div class="hero-pola" aria-hidden="true">
+			<svg class="pola" width="100%" height="100%">
+				<defs>
+					<pattern id="bintang-dash" width="80" height="80" patternUnits="userSpaceOnUse">
+						<g fill="none" stroke="currentColor" stroke-width="1">
+							<rect x="20" y="20" width="40" height="40" />
+							<rect x="20" y="20" width="40" height="40" transform="rotate(45 40 40)" />
+							<circle cx="40" cy="40" r="6" />
+						</g>
+					</pattern>
+				</defs>
+				<rect width="100%" height="100%" fill="url(#bintang-dash)" />
+			</svg>
 		</div>
-		{#if admin}
-			<div class="baris-aksi">
-				<a class="tombol utama" href="/penerimaan/baru">+ Catat donasi</a>
-				<a class="tombol" href="/mustahik/baru">+ Mustahik</a>
-				<a class="tombol" href="/periode/baru">+ Periode</a>
+		<div class="hero-isi">
+			<div class="sapaan">
+				<div>
+					<p class="alis"><span class="garis-emas" aria-hidden="true"></span>Beranda pengurus</p>
+					<h1>Assalamu'alaikum, {data.user.nama}</h1>
+					<p class="lead">Ringkasan dana zakat dan infak {masjid.nama}.</p>
+				</div>
+				{#if admin}
+					<div class="baris-aksi">
+						<a class="tombol emas" href="/penerimaan/baru">+ Catat donasi</a>
+						<a class="tombol hantu" href="/mustahik/baru">+ Mustahik</a>
+						<a class="tombol hantu" href="/periode/baru">+ Periode</a>
+					</div>
+				{/if}
 			</div>
-		{/if}
-	</div>
 
-	<div class="grid-kartu">
-		<div class="kartu ringkas">
-			<p class="redup">Diterima bulan ini</p>
-			<p class="besar">{rupiahRingkas(k.diterima_bulan_ini)}</p>
-			<p class="redup kecil">{labelBulan(k.bulanan[k.bulanan.length - 1].bulan)}</p>
+			<div class="stat-kaca">
+				<div class="stat">
+					<p class="label">Diterima bulan ini</p>
+					<p class="besar">{rupiahRingkas(k.diterima_bulan_ini)}</p>
+					<p class="ket">{labelBulan(k.bulanan[k.bulanan.length - 1].bulan)}</p>
+				</div>
+				<div class="stat">
+					<p class="label">Total penerimaan</p>
+					<p class="besar">{rupiahRingkas(k.total_diterima)}</p>
+					<p class="ket">{k.jumlah_donasi ? `Dari ${angka(k.jumlah_donasi)} donasi` : 'Belum ada donasi tercatat'}</p>
+				</div>
+				<div class="stat">
+					<p class="label">Total penyaluran</p>
+					<p class="besar">{rupiahRingkas(k.total_tersalur)}</p>
+					<p class="ket">{k.total_tersalur ? 'Dari semua periode' : 'Belum ada penyaluran tercatat'}</p>
+				</div>
+				<div class="stat">
+					<p class="label">Saldo tercatat</p>
+					<p class="besar" class:minus-hero={k.saldo < 0}>{rupiahRingkas(k.saldo)}</p>
+					<p class="ket">Penerimaan dikurangi penyaluran yang tercatat</p>
+				</div>
+			</div>
 		</div>
-		<div class="kartu ringkas">
-			<p class="redup">Total penerimaan</p>
-			<p class="besar">{rupiahRingkas(k.total_diterima)}</p>
-			<p class="redup kecil">{k.jumlah_donasi ? `Dari ${angka(k.jumlah_donasi)} donasi` : 'Belum ada donasi tercatat'}</p>
-		</div>
-		<div class="kartu ringkas">
-			<p class="redup">Total penyaluran</p>
-			<p class="besar">{rupiahRingkas(k.total_tersalur)}</p>
-			<p class="redup kecil">{k.total_tersalur ? 'Dari semua periode' : 'Belum ada penyaluran tercatat'}</p>
-		</div>
-		<div class="kartu ringkas">
-			<p class="redup">Saldo tercatat</p>
-			<p class="besar" class:minus={k.saldo < 0}>{rupiahRingkas(k.saldo)}</p>
-			<p class="redup kecil">Penerimaan dikurangi penyaluran yang tercatat di aplikasi</p>
-		</div>
+	</section>
+
+	<div class="jadwal-wadah">
+		<JadwalSalat hari={data.hari} lintang={masjid.lintang} bujur={masjid.bujur} />
 	</div>
 
 	<section class="dua">
@@ -277,19 +303,197 @@
 </div>
 
 <style>
-	.sapaan {
-		align-items: center;
-		margin-bottom: 0;
+	/* ---- Tema senada landing: hijau tua + satu aksen emas ---- */
+	.dash {
+		--emas: var(--kuning-garis);
+		--emas-terang: #f0cf86;
+		--hijau-pekat: #0c2e25;
 	}
-	.ringkas {
+	.hero {
+		position: relative;
+		overflow: hidden;
+		border-radius: 28px;
+		color: #fff;
+		background: linear-gradient(165deg, var(--hijau-pekat) 0%, var(--hijau-tua) 55%, #0f3328 100%);
+		padding: 2rem 2rem 5rem; /* ruang bawah untuk kartu jadwal yang menumpuk */
+		box-shadow: 0 32px 56px -34px rgb(12 46 37 / 0.6); /* bayangan sewarna hijau */
+	}
+	.hero-pola {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		color: rgb(255 255 255 / 0.06);
+		pointer-events: none;
+	}
+	.pola {
+		position: absolute;
+		inset: -80px; /* selisih satu ubin agar pergeseran mulus */
+		width: calc(100% + 160px);
+		height: calc(100% + 160px);
+		animation: geser 70s linear infinite;
+	}
+	.hero-isi {
+		position: relative;
 		display: grid;
-		gap: 0.35rem;
-		align-content: start;
+		gap: 1.75rem;
 	}
-	.besar {
-		font-size: 2rem;
+	.sapaan {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 1.25rem;
+		flex-wrap: wrap;
+	}
+	.alis {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 0.78rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--emas-terang);
+		margin: 0 0 0.5rem;
+	}
+	.garis-emas {
+		width: 1.75rem;
+		height: 2px;
+		background: var(--emas);
+	}
+	.hero h1 {
+		color: #fff;
+		font-size: clamp(1.5rem, 3vw, 2.1rem);
+		letter-spacing: -0.02em;
+		line-height: 1.15;
+	}
+	.lead {
+		margin: 0.35rem 0 0;
+		color: rgb(255 255 255 / 0.78);
+	}
+	.emas {
+		background: var(--emas);
+		border-color: transparent;
+		color: #2b1d00;
+		font-weight: 600;
+	}
+	.emas:hover {
+		background: var(--emas-terang);
+	}
+	.hantu {
+		background: transparent;
+		border-color: rgb(255 255 255 / 0.35);
+		color: #fff;
+	}
+	.hantu:hover {
+		background: rgb(255 255 255 / 0.1);
+	}
+	.tombol {
+		transition:
+			transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+			background-color 0.2s,
+			border-color 0.2s;
+	}
+	.tombol:active {
+		transform: translateY(1px) scale(0.98); /* terasa ditekan */
+	}
+	/* Empat angka utama dalam ubin kaca */
+	.stat-kaca {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+		gap: 0.75rem;
+	}
+	.stat {
+		display: grid;
+		gap: 0.3rem;
+		align-content: start;
+		padding: 1rem 1.1rem;
+		border-radius: 18px;
+		background: rgb(255 255 255 / 0.07);
+		backdrop-filter: blur(10px);
+		border: 1px solid rgb(255 255 255 / 0.16);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+	}
+	.stat p {
+		margin: 0;
+	}
+	.stat .label {
+		font-size: 0.78rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--emas-terang);
+	}
+	.stat .besar {
+		font-size: clamp(1.4rem, 2.6vw, 1.9rem);
 		font-weight: 700;
+		letter-spacing: -0.02em;
 		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+	.stat .ket {
+		font-size: 0.85rem;
+		color: rgb(255 255 255 / 0.7);
+	}
+	.minus-hero {
+		color: #ffb4ab; /* merah muda: tetap terbaca di latar hijau tua */
+	}
+	/* Kartu jadwal salat menumpuk di tepi bawah hero */
+	.jadwal-wadah {
+		position: relative;
+		margin: -3.25rem 1.25rem 0;
+	}
+	/* Garis emas di bawah judul bagian, seperti landing */
+	.kartu-kepala h2::after,
+	.judul-bagian h2::after {
+		content: '';
+		display: block;
+		width: 2.25rem;
+		height: 3px;
+		margin-top: 0.5rem;
+		border-radius: 2px;
+		background: var(--emas);
+	}
+	.dana .bar span {
+		background: var(--emas); /* bagian yang sudah tersalur */
+	}
+	.hero-isi > * {
+		animation: naik 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+	.hero-isi > :nth-child(2) {
+		animation-delay: 0.08s;
+	}
+	@keyframes naik {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+		}
+	}
+	@keyframes geser {
+		to {
+			transform: translate(80px, 80px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.pola,
+		.hero-isi > * {
+			animation: none;
+		}
+		.tombol {
+			transition: none;
+		}
+	}
+	@media (max-width: 640px) {
+		.hero {
+			padding: 1.25rem 1rem 4.5rem;
+			border-radius: 22px;
+		}
+		.stat-kaca {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.jadwal-wadah {
+			margin: -3rem 0.4rem 0;
+		}
 	}
 	.kecil {
 		font-size: 0.9rem;
