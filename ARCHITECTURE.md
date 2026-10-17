@@ -156,7 +156,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | Rute | Isi | Peran |
 |------|-----|-------|
 | `/` | Landing masjid: navigasi pil melayang dengan tombol Donasi, hero hijau tua beraksen emas (foto opsional `PUBLIC_MASJID_FOTO`), **jadwal salat hari ini** + penanda salat berikutnya, ragam zakat/infak + ajakan donasi, **transparansi dana** (angka agregat dari `GET /publik/ringkasan`; bagian disembunyikan bila API gagal atau belum ada data), cara penyaluran ARAS ringkas, kontak. Logo masjid (`/logo-masjid.jpg`, bisa diganti lewat `PUBLIC_MASJID_LOGO`) dipakai juga di login, sidebar, kuitansi, kop laporan, dan favicon | publik |
-| `/cara-kerja` | Penjelasan statis 6 langkah ARAS (dulu bagian landing) | publik |
+| `/cara-kerja` | Penjelasan lengkap ARAS untuk awam: alur aplikasi, kriteria/bobot/skala, contoh 5 calon dihitung 6 langkah (angka dari `lib/aras-contoh.ts`, dijaga tes), kuota, aturan seri, tanya jawab | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | Beranda umum masjid bertema sama dengan landing (hero hijau tua berpola + ubin kaca 4 angka utama, tombol emas, **jadwal salat** hari ini): dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
