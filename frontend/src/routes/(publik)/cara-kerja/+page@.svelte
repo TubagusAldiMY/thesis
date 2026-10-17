@@ -25,8 +25,8 @@
 	const n = kuota(dana, nominal);
 
 	const f4 = (x: number) => desimal(x, 4);
-	// Kolom C1 setelah dibalik berukuran sangat kecil (0,0000020), jadi ditampilkan dalam satuan 10⁻⁶.
-	const mikro = (x: number) => desimal(x * 1e6, 3);
+	// Calon pertama yang nilainya sama dengan nilai ideal A₀ pada kriteria j (untuk kalimat contoh langkah 1).
+	const pemilik = (j: number) => alternatifContoh.find((a) => a.nilai[j] === hasil.a0[j])?.id ?? '';
 	const bobotMaks = Math.max(...kriteriaContoh.map((k) => k.bobot));
 
 	// Satu warna per kriteria untuk batang bertumpuk "S" (hijau bertingkat + dua emas).
@@ -56,17 +56,18 @@
 		['Penyaluran dan laporan', 'Admin', 'Setelah disetujui, penyaluran dicatat per penerima (total tidak boleh melebihi dana), periode ditutup, lalu laporan dicetak.']
 	];
 
+	// Kolom: nilai, C1 penghasilan, C3 tempat tinggal, C4 kesehatan, C5 pekerjaan. 4 = paling membutuhkan.
 	const skala = [
-		[1, 'Layak, milik sendiri', 'Sehat', 'Tetap'],
-		[2, 'Layak, sewa / menumpang', 'Sakit ringan', 'Serabutan teratur'],
-		[3, 'Kurang layak', 'Sakit kronis / lansia', 'Serabutan tidak teratur'],
-		[4, 'Tidak layak / tanpa tempat tinggal', 'Disabilitas berat / sakit parah', 'Tidak bekerja']
+		[1, 'Cukup', 'Layak, milik sendiri', 'Sehat', 'Tetap'],
+		[2, 'Terbatas (kebutuhan pokok tercukupi, tetapi pas-pasan)', 'Layak, sewa / menumpang', 'Sakit ringan', 'Serabutan teratur'],
+		[3, 'Sangat terbatas (kebutuhan pokok sering tidak tercukupi)', 'Kurang layak', 'Sakit kronis / lansia', 'Serabutan tidak teratur'],
+		[4, 'Tidak berpenghasilan / sangat tidak menentu', 'Tidak layak / tanpa tempat tinggal', 'Disabilitas berat / sakit parah', 'Tidak bekerja']
 	];
 
 	const alasan = [
-		['A2', 'Peringkat 1', 'Penghasilannya paling kecil, rumahnya tidak layak, dan tidak bekerja. Hampir semua kriteria mengarah ke "sangat membutuhkan".'],
-		['A3', 'Peringkat terakhir', 'Penghasilannya paling besar, sehat, dan rumahnya layak. Wajar bila paling akhir.'],
-		['A5', 'Di bawah A1 dan A4', 'Tanggungannya paling banyak, tetapi penghasilannya relatif tinggi dan rumahnya layak. Satu kriteria yang tinggi tidak otomatis membuat calon naik.']
+		['A2', 'Peringkat 1', 'Tingkat penghasilannya paling membutuhkan (4), rumahnya tidak layak, dan tidak bekerja. Hampir semua kriteria mengarah ke "sangat membutuhkan".'],
+		['A3', 'Peringkat terakhir', 'Penghasilannya paling cukup (tingkat 1), sehat, dan rumahnya layak. Wajar bila paling akhir.'],
+		['A5', 'Di bawah A1 dan A4', 'Tanggungannya paling banyak, tetapi penghasilannya relatif cukup (tingkat 2) dan rumahnya layak. Satu kriteria yang tinggi tidak otomatis membuat calon naik.']
 	];
 
 	const aturan = [
@@ -261,7 +262,7 @@
 				<h2>Kriteria, bobot, dan skala</h2>
 				<p class="redup">
 					<strong>Kriteria</strong> adalah hal yang dinilai pada setiap calon. <strong>Bobot</strong> menunjukkan seberapa penting satu kriteria dibanding
-					yang lain; jumlah seluruh bobot harus tepat 1,00 (100%). Berikut contoh yang dipakai di halaman ini.
+					yang lain; jumlah seluruh bobot harus tepat 1,00 (100%). Berikut kriteria dan bobot awal hasil kesepakatan dengan pengurus masjid, yang juga dipakai pada contoh di halaman ini.
 				</p>
 			</div>
 
@@ -298,17 +299,17 @@
 							<span class="panah turun-panah" aria-hidden="true">↓</span>
 							<div>
 								<strong>Cost</strong>
-								<p class="redup kecil">Makin <em>kecil</em> nilainya, makin layak dibantu. Contoh: penghasilan Rp500.000 lebih membutuhkan daripada Rp1.500.000.</p>
+								<p class="redup kecil">Makin <em>kecil</em> nilainya, makin layak dibantu. Contoh: bila penghasilan diisi dalam rupiah, Rp500.000 lebih membutuhkan daripada Rp1.500.000. Pada konfigurasi ini penghasilan diisi sebagai tingkat (4 = paling membutuhkan), sehingga semua kriteria bertipe benefit.</p>
 							</div>
 						</div>
 					</div>
 				</div>
 				<div class="penjelas">
 					<h3>Skala 1 sampai 4</h3>
-					<p class="redup kecil">Tiga kriteria dipilih sebagai tingkat. Angka 4 sengaja berarti <strong>paling membutuhkan</strong>, jadi ketiganya searah dan bertipe benefit.</p>
+					<p class="redup kecil">Empat kriteria dipilih sebagai tingkat. Angka 4 sengaja berarti <strong>paling membutuhkan</strong>, jadi semuanya searah dan bertipe benefit.</p>
 					<div class="tabel-wadah">
 						<table class="skala">
-							<thead><tr><th>Nilai</th><th>Tempat tinggal (C3)</th><th>Kesehatan (C4)</th><th>Pekerjaan (C5)</th></tr></thead>
+							<thead><tr><th>Nilai</th><th>Penghasilan (C1)</th><th>Tempat tinggal (C3)</th><th>Kesehatan (C4)</th><th>Pekerjaan (C5)</th></tr></thead>
 							<tbody>
 								{#each skala as [nilai, ...sel] (nilai)}
 									<tr>
@@ -321,7 +322,7 @@
 					</div>
 				</div>
 			</div>
-			<p class="redup catatan">Bobot dan arti skala hanya contoh. Yang dipakai sebenarnya ditetapkan pengurus lewat menu Kriteria, dan setiap perubahan tercatat di riwayat aktivitas.</p>
+			<p class="redup catatan">Bobot dan arti skala di atas mengikuti kesepakatan awal dengan pengurus dan dapat diubah kapan saja lewat menu Kriteria; setiap perubahan tercatat di riwayat aktivitas. Angka lima calon di halaman ini tetap rekaan.</p>
 		</section>
 
 		<section class="bagian-gelap" id="hitung">
@@ -348,7 +349,7 @@
 								{#each alternatifContoh as a (a.id)}
 									<tr>
 										<td><strong>{a.id}</strong></td>
-										{#each a.nilai as v, j (j)}<td class="kanan angka">{j === 0 ? rupiah(v) : angka(v)}</td>{/each}
+										{#each a.nilai as v, j (j)}<td class="kanan angka">{angka(v)}</td>{/each}
 									</tr>
 								{/each}
 							</tbody>
@@ -387,8 +388,8 @@
 							<div class="sehari"><span class="chip">Sehari-hari</span><p>Ambil nilai terbaik pada tiap kriteria dari semua calon, lalu jadikan satu "calon ideal".</p></div>
 							<p class="rumus">Benefit → nilai terbesar · Cost → nilai terkecil</p>
 							<p class="contoh">
-								<strong>Pada contoh:</strong> penghasilan terkecil {rupiah(hasil.a0[0])} (milik A2), tanggungan terbanyak {angka(hasil.a0[1])} (A5), dan nilai
-								tertinggi untuk tempat tinggal, kesehatan, dan pekerjaan masing-masing {angka(hasil.a0[2])}, {angka(hasil.a0[3])}, dan {angka(hasil.a0[4])}.
+								<strong>Pada contoh:</strong> tingkat penghasilan tertinggi {angka(hasil.a0[0])} (milik {pemilik(0)}), tanggungan terbanyak {angka(hasil.a0[1])} ({pemilik(1)}), dan
+								tingkat tertinggi untuk tempat tinggal, kesehatan, dan pekerjaan masing-masing {angka(hasil.a0[2])}, {angka(hasil.a0[3])}, dan {angka(hasil.a0[4])}.
 							</p>
 							<div class="tabel-wadah">
 								<table class="tabel-hitung">
@@ -396,23 +397,26 @@
 									<tbody>
 										<tr class="ideal">
 											<td><strong>A₀ (ideal)</strong></td>
-											{#each hasil.a0 as v, j (j)}<td class="kanan angka">{j === 0 ? rupiah(v) : angka(v)}</td>{/each}
+											{#each hasil.a0 as v, j (j)}<td class="kanan angka">{angka(v)}</td>{/each}
 										</tr>
 									</tbody>
 								</table>
 							</div>
 						{:else if aktif === 1}
-							<h3>Samakan arah: balik kriteria cost</h3>
+							<h3>Samakan arah: balik kriteria cost (bila ada)</h3>
 							<div class="sehari">
 								<span class="chip">Sehari-hari</span>
-								<p>Pada penghasilan, angka kecil justru bagus; pada kriteria lain, angka besar yang bagus. Supaya semuanya searah ("besar = lebih layak"), penghasilan dibalik menjadi 1 dibagi nilainya.</p>
+								<p>
+									Ada kriteria yang "makin kecil makin bagus" (disebut cost), misalnya penghasilan bila diisi dalam rupiah. Supaya semua kriteria searah ("besar = lebih layak"), nilai kriteria cost dibalik menjadi 1 dibagi nilainya.
+								</p>
 							</div>
 							<p class="rumus">x' = 1 ÷ x &nbsp;(hanya kriteria cost)</p>
 							<p class="contoh">
-								<strong>Pada contoh:</strong> penghasilan A1 Rp800.000 menjadi 1 ÷ 800.000 = 0,00000125. Penghasilan terkecil menjadi angka terbesar, dan
-								penghasilan terbesar menjadi angka terkecil. Kolom C1 ditulis dalam satuan ×10⁻⁶ agar mudah dibaca.
+								<strong>Pada contoh:</strong> semua kriteria bertipe benefit (penghasilan diisi sebagai tingkat, 4 = paling membutuhkan), jadi <em>tidak ada nilai yang dibalik</em>:
+								tabel di bawah sama dengan data masukan, ditambah baris jumlah kolom yang dipakai pada langkah berikutnya. Langkah ini tetap ada karena pengurus boleh
+								menambah kriteria bertipe cost, dan aplikasi akan membaliknya otomatis.
 							</p>
-							{@render matriks(hasil.baris, (b) => b.x, (v, j) => (j === 0 ? mikro(v) : angka(v)), ['C1 (×10⁻⁶)', 'C2', 'C3', 'C4', 'C5'], [mikro(hasil.jumlah[0]), ...hasil.jumlah.slice(1).map(angka)])}
+							{@render matriks(hasil.baris, (b) => b.x, (v) => angka(v), kriteriaContoh.map((k) => k.kode), hasil.jumlah.map(angka))}
 						{:else if aktif === 2}
 							<h3>Samakan skala: normalisasi</h3>
 							<div class="sehari">

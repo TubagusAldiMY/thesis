@@ -155,7 +155,9 @@ Mengisi 5 mustahik dari contoh hitung `docs/02` + satu periode zakat (kuota 3) s
 set -a && . ./.env && set +a && ./scripts/seed-demo.sh
 ```
 
-Setelah menekan Hitung ARAS, hasil yang diharapkan: A2 0,8939 · A4 0,7327 · A1 0,6888 (penerima) · A5 0,5611 · A3 0,4099 (cadangan). Alur demo lengkap: Admin hitung → keluar → masuk sebagai Ketua → Hasil → Setujui → keluar → Admin → Penyaluran → Catat ×3 → Tutup periode → Laporan (Cetak/CSV).
+Skrip ini lebih dulu menjalankan `scripts/terapkan-kriteria-final.sh` (kriteria hasil konfirmasi Ketua Yayasan: C1 penghasilan sebagai tingkat 1–4, bobot 0,30/0,30/0,10/0,15/0,15), jadi data contoh memakai tingkat, bukan rupiah. Skrip kriteria itu juga bisa dijalankan sendiri pada database yang sudah dipakai (aman diulang), mis. `set -a && . ./.env && set +a && ./scripts/terapkan-kriteria-final.sh`. Nilai C1 lama berupa rupiah tidak dikonversi; periode lama perlu dinilai ulang.
+
+Setelah menekan Hitung ARAS, hasil yang diharapkan: A2 0,8618 · A1 0,7346 · A4 0,6671 (penerima) · A5 0,6098 · A3 0,3849 (cadangan). Alur demo lengkap: Admin hitung → keluar → masuk sebagai Ketua → Hasil → Setujui → keluar → Admin → Penyaluran → Catat ×3 → Tutup periode → Laporan (Cetak/CSV).
 
 ### 8. Test
 **Backend** (dari `App/backend`, `.env` sudah dimuat):

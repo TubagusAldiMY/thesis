@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # seed-demo.sh — isi data contoh untuk demo sidang lewat Go API.
 #
-# Membuat 5 mustahik (contoh hitung docs/02: A1–A5, NIK sintetis), satu periode
+# Memasang kriteria final hasil konfirmasi narasumber (terapkan-kriteria-final.sh: C1 tingkat 1–4,
+# bobot 0,30/0,30/0,10/0,15/0,15), lalu membuat 5 mustahik sintetis A1–A5 (NIK sintetis), satu periode
 # "Zakat Fitrah 1448 H" (dana Rp 3.000.000, Rp 1.000.000/penerima → kuota 3),
 # memilih kelimanya sebagai kandidat, dan mengisi penilaian lengkap.
 # Berhenti SEBELUM Hitung ARAS supaya perhitungannya bisa didemokan langsung.
@@ -35,18 +36,21 @@ minta() {
 }
 ambil_id() { sed -n 's/^{"id":"\([^"]*\)".*/\1/p'; }
 
+echo "→ kriteria final (C1 tingkat 1–4, bobot hasil konfirmasi narasumber)"
+"$(dirname "${BASH_SOURCE[0]}")/terapkan-kriteria-final.sh" >/dev/null
+
 echo "→ masuk sebagai $USER_DEMO"
 minta POST /api/auth/login "{\"username\":\"$USER_DEMO\",\"password\":\"$DEMO_PASSWORD\"}" >/dev/null
 
-# nama | asnaf | C1 penghasilan | C2 tanggungan | C3 | C4 | C5   (docs/02 bagian 3)
+# nama | asnaf | C1 tingkat penghasilan (1–4, 4 = paling membutuhkan) | C2 tanggungan | C3 | C4 | C5
 # Nama sengaja berurutan abjad (Aminah → Endang) supaya label A1–A5 di UI,
 # yang mengikuti urutan nama, sama dengan label di dokumen.
 DATA=(
-	"Aminah|miskin|800000|5|3|2|3"
-	"Badrun|fakir|500000|4|4|3|4"
-	"Cahyono|miskin|1500000|3|2|1|2"
-	"Dewi Sartika|fakir|600000|2|3|4|3"
-	"Endang Susilo|miskin|1000000|6|2|2|1"
+	"Aminah|miskin|3|5|3|2|3"
+	"Badrun|fakir|4|4|4|3|4"
+	"Cahyono|miskin|1|3|2|1|2"
+	"Dewi Sartika|fakir|3|2|3|4|3"
+	"Endang Susilo|miskin|2|6|2|2|1"
 )
 
 IDS=()
@@ -70,4 +74,4 @@ minta PUT "/api/periode/$pid/kandidat" "{\"mustahik_ids\":[$(IFS=,; echo "${IDS[
 minta PUT "/api/periode/$pid/penilaian" "{\"items\":[$(IFS=,; echo "${NILAI[*]}")]}" >/dev/null
 
 echo "Selesai. Buka /periode/$pid/penilaian lalu tekan \"Hitung ARAS\"."
-echo "Hasil yang diharapkan (docs/02): A2 0,8939 · A4 0,7327 · A1 0,6888 (penerima) · A5 0,5611 · A3 0,4099 (cadangan)."
+echo "Hasil yang diharapkan: A2 0,8618 · A1 0,7346 · A4 0,6671 (penerima) · A5 0,6098 · A3 0,3849 (cadangan)."

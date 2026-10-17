@@ -52,21 +52,23 @@ export interface HasilContoh {
 	ranking: BarisHitung[];
 }
 
+// Konfigurasi final hasil konfirmasi Ketua Yayasan (Oktober 2026), sama dengan scripts/terapkan-kriteria-final.sh:
+// penghasilan kini TINGKAT 1–4 (4 = paling membutuhkan) bertipe benefit, jadi contoh ini tidak punya kriteria cost.
 export const kriteriaContoh: KriteriaContoh[] = [
-	{ kode: 'C1', nama: 'Penghasilan per bulan', tipe: 'cost', bobot: 0.3, satuan: 'Rupiah' },
-	{ kode: 'C2', nama: 'Jumlah tanggungan', tipe: 'benefit', bobot: 0.2, satuan: 'Jiwa' },
-	{ kode: 'C3', nama: 'Kondisi tempat tinggal', tipe: 'benefit', bobot: 0.2, satuan: 'Skala 1–4' },
-	{ kode: 'C4', nama: 'Kondisi kesehatan / disabilitas', tipe: 'benefit', bobot: 0.15, satuan: 'Skala 1–4' },
-	{ kode: 'C5', nama: 'Status pekerjaan', tipe: 'benefit', bobot: 0.15, satuan: 'Skala 1–4' }
+	{ kode: 'C1', nama: 'Penghasilan per bulan', tipe: 'benefit', bobot: 0.3, satuan: 'Tingkat 1–4' },
+	{ kode: 'C2', nama: 'Jumlah tanggungan', tipe: 'benefit', bobot: 0.3, satuan: 'Jiwa' },
+	{ kode: 'C3', nama: 'Kondisi tempat tinggal', tipe: 'benefit', bobot: 0.1, satuan: 'Tingkat 1–4' },
+	{ kode: 'C4', nama: 'Kondisi kesehatan / disabilitas', tipe: 'benefit', bobot: 0.15, satuan: 'Tingkat 1–4' },
+	{ kode: 'C5', nama: 'Status pekerjaan', tipe: 'benefit', bobot: 0.15, satuan: 'Tingkat 1–4' }
 ];
 
 /** Lima calon SINTETIS (bukan data mustahik asli); sama dengan data seed demo dan Tabel 3.7 di skripsi. */
 export const alternatifContoh: AlternatifContoh[] = [
-	{ id: 'A1', nilai: [800_000, 5, 3, 2, 3] },
-	{ id: 'A2', nilai: [500_000, 4, 4, 3, 4] },
-	{ id: 'A3', nilai: [1_500_000, 3, 2, 1, 2] },
-	{ id: 'A4', nilai: [600_000, 2, 3, 4, 3] },
-	{ id: 'A5', nilai: [1_000_000, 6, 2, 2, 1] }
+	{ id: 'A1', nilai: [3, 5, 3, 2, 3] },
+	{ id: 'A2', nilai: [4, 4, 4, 3, 4] },
+	{ id: 'A3', nilai: [1, 3, 2, 1, 2] },
+	{ id: 'A4', nilai: [3, 2, 3, 4, 3] },
+	{ id: 'A5', nilai: [2, 6, 2, 2, 1] }
 ];
 
 /** Jumlah penerima = dana dibagi nominal per penerima, dibulatkan ke bawah (tidak boleh melebihi dana). */

@@ -29,6 +29,65 @@ func alternatifContoh() []Alternatif {
 	}
 }
 
+// kriteriaFinal = konfigurasi hasil konfirmasi Ketua Yayasan (Oktober 2026): C1 penghasilan kini TINGKAT 1–4
+// bertipe benefit (4 = paling membutuhkan), bobot 0,30/0,30/0,10/0,15/0,15. Dipasang lewat
+// scripts/terapkan-kriteria-final.sh; skripsi (BAB III 3.3.4) memakai angka ini.
+func kriteriaFinal() []Kriteria {
+	return []Kriteria{
+		{Kode: "C1", Tipe: Benefit, Bobot: 0.30},
+		{Kode: "C2", Tipe: Benefit, Bobot: 0.30},
+		{Kode: "C3", Tipe: Benefit, Bobot: 0.10},
+		{Kode: "C4", Tipe: Benefit, Bobot: 0.15},
+		{Kode: "C5", Tipe: Benefit, Bobot: 0.15},
+	}
+}
+
+// alternatifFinal = lima calon sintetis; C1 berupa tingkat penghasilan (bukan rupiah).
+func alternatifFinal() []Alternatif {
+	return []Alternatif{
+		{ID: "A1", Nilai: []float64{3, 5, 3, 2, 3}},
+		{ID: "A2", Nilai: []float64{4, 4, 4, 3, 4}},
+		{ID: "A3", Nilai: []float64{1, 3, 2, 1, 2}},
+		{ID: "A4", Nilai: []float64{3, 2, 3, 4, 3}},
+		{ID: "A5", Nilai: []float64{2, 6, 2, 2, 1}},
+	}
+}
+
+// Sanity test konfigurasi final: ranking di skripsi (Tabel 3.11) dan seed demo harus sama.
+func TestHitung_KonfigurasiFinal(t *testing.T) {
+	h, err := Hitung(kriteriaFinal(), alternatifFinal())
+	if err != nil {
+		t.Fatalf("Hitung error: %v", err)
+	}
+	if !dekat(h.S0, 0.2348, tolDokumen) {
+		t.Errorf("S0 = %.6f, mau 0,2348", h.S0)
+	}
+	mau := []struct {
+		id      string
+		s, k    float64
+		ranking int
+	}{
+		{"A2", 0.2024, 0.8618, 1},
+		{"A1", 0.1725, 0.7346, 2},
+		{"A4", 0.1567, 0.6671, 3},
+		{"A5", 0.1432, 0.6098, 4},
+		{"A3", 0.0904, 0.3849, 5},
+	}
+	if len(h.Alternatif) != len(mau) {
+		t.Fatalf("jumlah hasil = %d, mau %d", len(h.Alternatif), len(mau))
+	}
+	for i, m := range mau {
+		g := h.Alternatif[i]
+		if g.ID != m.id || g.Ranking != m.ranking || !dekat(g.S, m.s, tolDokumen) || !dekat(g.K, m.k, tolDokumen) {
+			t.Errorf("baris %d = %+v, mau %+v", i, g, m)
+		}
+	}
+	// Tanpa kriteria cost, alternatif ideal hanya mengambil nilai terbesar tiap kriteria.
+	if !reflect.DeepEqual(h.Langkah.A0, []float64{4, 6, 4, 4, 4}) {
+		t.Errorf("A0 = %v, mau [4 6 4 4 4]", h.Langkah.A0)
+	}
+}
+
 func dekat(a, b, toleransi float64) bool { return math.Abs(a-b) <= toleransi }
 
 // Angka di dokumen dibulatkan ke 4 desimal, jadi selisih maksimal 5e-5.

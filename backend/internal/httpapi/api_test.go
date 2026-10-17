@@ -190,6 +190,30 @@ func TestBuatPeriode_JumlahPenerimaLewatHTTP(t *testing.T) {
 	}
 }
 
+// terapkanKriteriaFinal memasang konfigurasi hasil konfirmasi narasumber lewat PUT /api/kriteria, persis seperti
+// scripts/terapkan-kriteria-final.sh: C1 tingkat 1–4 bertipe benefit 0,30; C2 0,30; C3 0,10 (C4 0,15 dan C5 0,15 tetap).
+// Seed V002 sengaja tidak diubah (migrasi ter-apply tidak boleh diedit), jadi tes alur demo memasangnya sendiri.
+func terapkanKriteriaFinal(t *testing.T, admin *klien) {
+	t.Helper()
+	var sekarang kriteriaAPI
+	admin.minta("GET", "/api/kriteria", nil, 200, &sekarang)
+	id := map[string]string{}
+	for _, k := range sekarang.Items {
+		id[k.Kode] = k.ID
+	}
+	var sesudah kriteriaAPI
+	admin.minta("PUT", "/api/kriteria", map[string]any{"items": []any{
+		map[string]any{"id": id["C1"], "nama": "Penghasilan per bulan", "tipe": "benefit", "bobot": 0.30, "aktif": true,
+			"skala": map[string]string{"1": "cukup", "2": "terbatas", "3": "sangat terbatas", "4": "tidak berpenghasilan / sangat tidak menentu"}},
+		map[string]any{"id": id["C2"], "nama": "Jumlah tanggungan", "tipe": "benefit", "bobot": 0.30, "skala": nil, "aktif": true},
+		map[string]any{"id": id["C3"], "nama": "Kondisi tempat tinggal", "tipe": "benefit", "bobot": 0.10, "aktif": true,
+			"skala": map[string]string{"1": "layak, milik sendiri", "2": "layak, sewa/menumpang", "3": "kurang layak", "4": "tidak layak / tanpa tempat tinggal"}},
+	}}, 200, &sesudah)
+	if sesudah.TotalPersen != 100 || sesudah.Items[0].Tipe != "benefit" {
+		t.Fatalf("kriteria final tidak terpasang: total %d%%, tipe C1 %q", sesudah.TotalPersen, sesudah.Items[0].Tipe)
+	}
+}
+
 // TestAlurDemo = skenario sidang: input data → ranking ARAS → persetujuan →
 // penyaluran → laporan, semua lewat HTTP. Angka K dicocokkan dengan docs/02.
 func TestAlurDemo_DariMustahikSampaiLaporan(t *testing.T) {
@@ -197,17 +221,19 @@ func TestAlurDemo_DariMustahikSampaiLaporan(t *testing.T) {
 	admin, ketua := klienBaru(t, srv), klienBaru(t, srv)
 	admin.login("admin")
 	ketua.login("ketua")
+	terapkanKriteriaFinal(t, admin)
 
+	// C1 = tingkat penghasilan 1–4 (4 = paling membutuhkan), sesuai konfigurasi final narasumber.
 	data := []struct {
 		nama  string
 		asnaf string
 		nilai map[string]float64
 	}{
-		{"Mustahik 1", "miskin", map[string]float64{"C1": 800000, "C2": 5, "C3": 3, "C4": 2, "C5": 3}},
-		{"Mustahik 2", "fakir", map[string]float64{"C1": 500000, "C2": 4, "C3": 4, "C4": 3, "C5": 4}},
-		{"Mustahik 3", "miskin", map[string]float64{"C1": 1500000, "C2": 3, "C3": 2, "C4": 1, "C5": 2}},
-		{"Mustahik 4", "fakir", map[string]float64{"C1": 600000, "C2": 2, "C3": 3, "C4": 4, "C5": 3}},
-		{"Mustahik 5", "miskin", map[string]float64{"C1": 1000000, "C2": 6, "C3": 2, "C4": 2, "C5": 1}},
+		{"Mustahik 1", "miskin", map[string]float64{"C1": 3, "C2": 5, "C3": 3, "C4": 2, "C5": 3}},
+		{"Mustahik 2", "fakir", map[string]float64{"C1": 4, "C2": 4, "C3": 4, "C4": 3, "C5": 4}},
+		{"Mustahik 3", "miskin", map[string]float64{"C1": 1, "C2": 3, "C3": 2, "C4": 1, "C5": 2}},
+		{"Mustahik 4", "fakir", map[string]float64{"C1": 3, "C2": 2, "C3": 3, "C4": 4, "C5": 3}},
+		{"Mustahik 5", "miskin", map[string]float64{"C1": 2, "C2": 6, "C3": 2, "C4": 2, "C5": 1}},
 	}
 	var ids []string
 	for i, d := range data {
@@ -261,8 +287,8 @@ func TestAlurDemo_DariMustahikSampaiLaporan(t *testing.T) {
 		} `json:"langkah"`
 	}
 	admin.minta("POST", base+"/hitung", nil, 200, &hasil)
-	mauNama := []string{"Mustahik 2", "Mustahik 4", "Mustahik 1", "Mustahik 5", "Mustahik 3"}
-	mauK := []float64{0.8939, 0.7327, 0.6888, 0.5611, 0.4099}
+	mauNama := []string{"Mustahik 2", "Mustahik 1", "Mustahik 4", "Mustahik 5", "Mustahik 3"}
+	mauK := []float64{0.8618, 0.7346, 0.6671, 0.6098, 0.3849}
 	for i, it := range hasil.Items {
 		if it.Mustahik.Nama != mauNama[i] || it.K < mauK[i]-1e-4 || it.K > mauK[i]+1e-4 {
 			t.Errorf("ranking %d = %s K %.4f, mau %s K %.4f", i+1, it.Mustahik.Nama, it.K, mauNama[i], mauK[i])
