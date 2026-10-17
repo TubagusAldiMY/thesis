@@ -260,6 +260,7 @@ func (a *API) buatPeriode(w http.ResponseWriter, r *http.Request) {
 		Jenis              domain.JenisPeriode `json:"jenis"`
 		DanaTersedia       int64               `json:"dana_tersedia"`
 		NominalPerPenerima int64               `json:"nominal_per_penerima"`
+		JumlahPenerima     int64               `json:"jumlah_penerima"` // alternatif nominal: isi salah satu
 		AsnafDiizinkan     []domain.Asnaf      `json:"asnaf_diizinkan"`
 	}
 	if !a.bacaJSON(w, r, &in) {
@@ -267,7 +268,7 @@ func (a *API) buatPeriode(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := a.svc.BuatPeriode(r.Context(), userDari(r.Context()).ID, service.PeriodeInput{
 		Nama: in.Nama, Jenis: in.Jenis, DanaTersedia: in.DanaTersedia,
-		NominalPerPenerima: in.NominalPerPenerima, AsnafDiizinkan: in.AsnafDiizinkan,
+		NominalPerPenerima: in.NominalPerPenerima, JumlahPenerima: in.JumlahPenerima, AsnafDiizinkan: in.AsnafDiizinkan,
 	})
 	if err != nil {
 		a.gagal(w, r, err)

@@ -17,10 +17,15 @@ const maksKandidat = 500
 
 // PeriodeInput = isian formulir "Buat periode".
 type PeriodeInput struct {
-	Nama               string
-	Jenis              domain.JenisPeriode
-	DanaTersedia       int64
+	Nama         string
+	Jenis        domain.JenisPeriode
+	DanaTersedia int64
+	// Cara membagi dana: isi SALAH SATU. NominalPerPenerima → kuota = ⌊dana ÷ nominal⌋.
+	// JumlahPenerima → nominal = ⌊dana ÷ jumlah⌋, kuota tepat sama dengan jumlah itu.
+	// Yang dipakai hanya nominal: kolom basis data tidak berubah, jadi kuota, laporan, dan
+	// penyaluran tetap bekerja seperti semula.
 	NominalPerPenerima int64
+	JumlahPenerima     int64
 	AsnafDiizinkan     []domain.Asnaf // dipakai untuk zakat; diabaikan untuk infak
 }
 
@@ -38,9 +43,11 @@ func statusSah(st domain.StatusPeriode) bool {
 }
 
 // BuatPeriode memvalidasi lalu membuat periode berstatus draft (FR-06).
-// Aturan: nama 3–100 karakter; dana dan nominal > 0; nominal ≤ dana (kuota
-// minimal 1); zakat wajib punya ≥ 1 golongan asnaf yang sah, infak tidak
-// membatasi golongan (isian asnaf dibuang).
+// Aturan: nama 3–100 karakter; dana > 0; pembagian dana lewat SALAH SATU
+// nominal per penerima (> 0, ≤ dana, kuota minimal 1) atau jumlah penerima
+// (nominal = ⌊dana ÷ jumlah⌋, harus menghasilkan kuota tepat sebesar jumlah itu);
+// zakat wajib punya ≥ 1 golongan asnaf yang sah, infak tidak membatasi
+// golongan (isian asnaf dibuang).
 func (s *Service) BuatPeriode(ctx context.Context, userID string, in PeriodeInput) (domain.Periode, error) {
 	g := galat{}
 	nama := strings.TrimSpace(in.Nama)
@@ -53,11 +60,33 @@ func (s *Service) BuatPeriode(ctx context.Context, userID string, in PeriodeInpu
 	if in.DanaTersedia <= 0 || in.DanaTersedia > maksUang {
 		g.tambah("dana_tersedia", "Dana tersedia harus lebih dari 0 dan tidak melebihi batas")
 	}
-	if in.NominalPerPenerima <= 0 || in.NominalPerPenerima > maksUang {
-		g.tambah("nominal_per_penerima", "Nominal per penerima harus lebih dari 0 dan tidak melebihi batas")
-	}
-	if in.NominalPerPenerima > in.DanaTersedia && in.DanaTersedia > 0 {
-		g.tambah("nominal_per_penerima", "Nominal per penerima tidak boleh melebihi dana tersedia")
+	nominal := in.NominalPerPenerima
+	switch {
+	case in.JumlahPenerima != 0 && in.NominalPerPenerima != 0:
+		g.tambah("jumlah_penerima", "Isi salah satu saja: nominal per penerima atau jumlah penerima")
+	case in.JumlahPenerima != 0:
+		// Mode "dibagi jumlah penerima": nominal diturunkan dari dana. Dana yang belum sah dilewati
+		// (kesalahannya sudah dicatat di atas) supaya tidak ada pembagian dengan angka ngawur.
+		switch {
+		case in.JumlahPenerima < 0 || in.JumlahPenerima > maksUang:
+			g.tambah("jumlah_penerima", "Jumlah penerima harus lebih dari 0 dan tidak melebihi batas")
+		case in.DanaTersedia > 0 && in.DanaTersedia <= maksUang:
+			nominal = in.DanaTersedia / in.JumlahPenerima
+			if nominal <= 0 {
+				g.tambah("jumlah_penerima", "Jumlah penerima melebihi dana tersedia (tiap penerima minimal Rp 1)")
+			} else if in.DanaTersedia/nominal != in.JumlahPenerima {
+				// Pembulatan ke bawah bisa membuat ⌊dana ÷ nominal⌋ lebih besar dari jumlah yang diminta
+				// (mis. Rp 10 ÷ 4 = Rp 2, lalu 10 ÷ 2 = 5 penerima). Ditolak agar kuota tidak berbeda dari permintaan.
+				g.tambah("jumlah_penerima", fmt.Sprintf("Dana terlalu kecil untuk dibagi rata ke %d penerima", in.JumlahPenerima))
+			}
+		}
+	default:
+		if in.NominalPerPenerima <= 0 || in.NominalPerPenerima > maksUang {
+			g.tambah("nominal_per_penerima", "Nominal per penerima harus lebih dari 0 dan tidak melebihi batas")
+		}
+		if in.NominalPerPenerima > in.DanaTersedia && in.DanaTersedia > 0 {
+			g.tambah("nominal_per_penerima", "Nominal per penerima tidak boleh melebihi dana tersedia")
+		}
 	}
 	if strings.TrimSpace(userID) == "" {
 		g.tambah("pembuat", "Pembuat periode tidak diketahui")
@@ -86,7 +115,7 @@ func (s *Service) BuatPeriode(ctx context.Context, userID string, in PeriodeInpu
 
 	p := domain.Periode{
 		Nama: nama, Jenis: in.Jenis, DanaTersedia: in.DanaTersedia,
-		NominalPerPenerima: in.NominalPerPenerima, AsnafDiizinkan: asnaf, CreatedBy: userID,
+		NominalPerPenerima: nominal, AsnafDiizinkan: asnaf, CreatedBy: userID,
 	}
 	if err := s.st.CreatePeriode(ctx, &p); err != nil {
 		return domain.Periode{}, fmt.Errorf("service.BuatPeriode: %w", err)

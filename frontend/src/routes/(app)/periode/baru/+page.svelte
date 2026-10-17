@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { angka, labelAsnaf, parseAngka, rupiah, semuaAsnaf } from '$lib/format';
+	import { hitungPembagian, type CaraBagi } from '$lib/periode';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
@@ -10,15 +11,21 @@
 
 	// Nilai awal dari isian yang ditolak server (bila ada); selanjutnya dikendalikan pengguna.
 	const awal = untrack(() => form?.nilai);
+	// Nama diikat ke state (bukan value={form?...}): atribut value yang digabung ke efek templat yang sama dengan kartu
+	// kuota ikut dijalankan ulang saat dana/nominal berubah dan mengosongkan nama yang sudah diketik.
+	let nama = $state(awal?.nama ?? '');
 	let jenis = $state(awal?.jenis ?? 'zakat');
 	let dana = $state(awal?.dana ?? '');
+	// Dua cara membagi dana, pilih salah satu: nominal per penerima, atau jumlah penerima (nominal dihitung).
+	let cara = $state<CaraBagi>(awal?.cara === 'jumlah' ? 'jumlah' : 'nominal');
 	let nominal = $state(awal?.nominal ?? '');
+	let jumlah = $state(awal?.jumlah ?? '');
 	const terpilih: string[] = awal?.asnaf ?? ['fakir', 'miskin'];
 
-	const nDana = $derived(parseAngka(dana));
-	const nNominal = $derived(parseAngka(nominal));
-	const kuota = $derived(nDana > 0 && nNominal > 0 ? Math.floor(nDana / nNominal) : 0);
-	const sisa = $derived(kuota > 0 ? nDana - kuota * nNominal : 0);
+	// NaN (ketikan belum angka) dianggap 0; hasilnya sama dengan yang dihitung server.
+	const aman = (n: number) => (Number.isNaN(n) ? 0 : n);
+	const nDana = $derived(aman(parseAngka(dana)));
+	const pembagian = $derived(hitungPembagian(cara, nDana, aman(parseAngka(cara === 'nominal' ? nominal : jumlah))));
 	const galat = (f: string) => form?.fields?.[f] ?? '';
 
 	/** rapikan menampilkan ribuan titik setelah kolom ditinggalkan (3000000 → 3.000.000). */
@@ -46,7 +53,7 @@
 		>
 			<div class="field">
 				<label for="nama">Nama periode *</label>
-				<input id="nama" name="nama" type="text" placeholder="mis. Zakat Fitrah 1448 H" maxlength="100" value={form?.nilai?.nama ?? ''} aria-invalid={Boolean(galat('nama'))} />
+				<input id="nama" name="nama" type="text" placeholder="mis. Zakat Fitrah 1448 H" maxlength="100" bind:value={nama} aria-invalid={Boolean(galat('nama'))} />
 				{#if galat('nama')}<span class="galat" role="alert">{galat('nama')}</span>{/if}
 			</div>
 
@@ -59,18 +66,41 @@
 				{#if galat('jenis')}<span class="galat" role="alert">{galat('jenis')}</span>{/if}
 			</fieldset>
 
-			<div class="dua">
-				<div class="field">
-					<label for="dana">Dana tersedia (Rp) *</label>
-					<input id="dana" name="dana_tersedia" type="text" inputmode="numeric" class="angka" placeholder="3.000.000" bind:value={dana} onblur={() => (dana = rapikan(dana))} aria-invalid={Boolean(galat('dana_tersedia'))} />
-					{#if galat('dana_tersedia')}<span class="galat" role="alert">{galat('dana_tersedia')}</span>{/if}
+			<div class="field">
+				<label for="dana">Dana tersedia (Rp) *</label>
+				<input id="dana" name="dana_tersedia" type="text" inputmode="numeric" class="angka" placeholder="3.000.000" bind:value={dana} onblur={() => (dana = rapikan(dana))} aria-invalid={Boolean(galat('dana_tersedia'))} />
+				{#if galat('dana_tersedia')}<span class="galat" role="alert">{galat('dana_tersedia')}</span>{/if}
+			</div>
+
+			<fieldset class="field">
+				<legend class="label">Cara membagi dana *</legend>
+				<div class="cara">
+					<label class="cara-pilihan" class:aktif={cara === 'nominal'}>
+						<input type="radio" name="cara" value="nominal" bind:group={cara} />
+						<span class="cara-judul">Nominal per penerima</span>
+						<span class="cara-ket">Anda tentukan jumlah uang tiap orang; jumlah penerima dihitung dari dana.</span>
+					</label>
+					<label class="cara-pilihan" class:aktif={cara === 'jumlah'}>
+						<input type="radio" name="cara" value="jumlah" bind:group={cara} />
+						<span class="cara-judul">Dibagi jumlah penerima</span>
+						<span class="cara-ket">Anda tentukan jumlah orang; nominal tiap orang dihitung dari dana.</span>
+					</label>
 				</div>
+			</fieldset>
+
+			{#if cara === 'nominal'}
 				<div class="field">
 					<label for="nominal">Nominal per penerima (Rp) *</label>
 					<input id="nominal" name="nominal_per_penerima" type="text" inputmode="numeric" class="angka" placeholder="1.000.000" bind:value={nominal} onblur={() => (nominal = rapikan(nominal))} aria-invalid={Boolean(galat('nominal_per_penerima'))} />
 					{#if galat('nominal_per_penerima')}<span class="galat" role="alert">{galat('nominal_per_penerima')}</span>{/if}
 				</div>
-			</div>
+			{:else}
+				<div class="field">
+					<label for="jumlah">Jumlah penerima (orang) *</label>
+					<input id="jumlah" name="jumlah_penerima" type="text" inputmode="numeric" class="angka" placeholder="3" bind:value={jumlah} aria-invalid={Boolean(galat('jumlah_penerima') || pembagian.peringatan)} />
+					{#if galat('jumlah_penerima')}<span class="galat" role="alert">{galat('jumlah_penerima')}</span>{:else if pembagian.peringatan}<span class="galat" role="alert">{pembagian.peringatan}</span>{/if}
+				</div>
+			{/if}
 
 			{#if jenis === 'zakat'}
 				<fieldset class="field">
@@ -95,15 +125,20 @@
 
 		<aside class="kartu ringkasan" aria-live="polite">
 			<h2>Kuota penerima</h2>
-			<p class="besar">{kuota} <span class="redup">penerima</span></p>
-			<p class="redup">⌊dana ÷ nominal⌋ = ⌊{Number.isNaN(nDana) ? 0 : angka(nDana)} ÷ {Number.isNaN(nNominal) ? 0 : angka(nNominal)}⌋</p>
+			<p class="besar">{pembagian.kuota} <span class="redup">penerima</span></p>
+			{#if cara === 'nominal'}
+				<p class="redup">⌊dana ÷ nominal⌋ = ⌊{angka(nDana)} ÷ {angka(pembagian.nominal)}⌋</p>
+			{:else}
+				<p class="redup">Nominal tiap penerima = ⌊dana ÷ jumlah⌋</p>
+				<p class="nominal-hasil angka">{pembagian.kuota > 0 ? rupiah(pembagian.nominal) : '–'}</p>
+			{/if}
 			<dl>
 				<dt>Terpakai</dt>
-				<dd class="angka">{rupiah(kuota * (Number.isNaN(nNominal) ? 0 : nNominal))}</dd>
+				<dd class="angka">{rupiah(pembagian.terpakai)}</dd>
 				<dt>Sisa dana</dt>
-				<dd class="angka">{rupiah(sisa)}</dd>
+				<dd class="angka">{rupiah(pembagian.sisa)}</dd>
 			</dl>
-			<p class="redup kecil">Kandidat peringkat 1–{kuota || 'N'} menjadi usulan penerima; sisanya cadangan.</p>
+			<p class="redup kecil">Kandidat peringkat 1–{pembagian.kuota || 'N'} menjadi usulan penerima; sisanya cadangan.</p>
 		</aside>
 	</div>
 </div>
@@ -138,10 +173,49 @@
 		padding: 0.35rem 0.85rem;
 		cursor: pointer;
 	}
-	.dua {
+	/* Pilihan cara membagi dana: dua kartu yang bisa diklik; kartu terpilih ditandai garis hijau. */
+	.cara {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 1rem;
+		gap: 0.75rem;
+		padding-top: 0.25rem;
+	}
+	.cara-pilihan {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		column-gap: 0.6rem;
+		row-gap: 0.2rem;
+		align-items: start;
+		padding: 0.85rem 1rem;
+		border: 1px solid var(--garis);
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition:
+			border-color 0.2s,
+			background-color 0.2s;
+	}
+	.cara-pilihan input {
+		accent-color: var(--hijau);
+		margin-top: 0.25rem;
+		grid-row: span 2;
+	}
+	.cara-pilihan.aktif {
+		border-color: var(--hijau);
+		background: var(--hijau-muda);
+	}
+	.cara-judul {
+		font-weight: 600;
+	}
+	.cara-ket {
+		grid-column: 2;
+		font-size: 0.88rem;
+		color: var(--teks-redup);
+		line-height: 1.4;
+	}
+	.nominal-hasil {
+		font-size: 1.4rem;
+		font-weight: 700;
+		color: var(--hijau);
 	}
 	.ringkasan {
 		display: grid;
@@ -176,7 +250,7 @@
 	}
 	@media (max-width: 900px) {
 		.tata,
-		.dua {
+		.cara {
 			grid-template-columns: 1fr;
 		}
 		.ringkasan {

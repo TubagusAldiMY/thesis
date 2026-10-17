@@ -159,6 +159,37 @@ func TestAuth_CookieGagalTerkunciDanPeran(t *testing.T) {
 	}
 }
 
+// TestBuatPeriode_JumlahPenerimaLewatHTTP: pengurus boleh mengisi jumlah penerima (bukan nominal);
+// nominal diturunkan dari dana. Mengisi keduanya sekaligus ditolak 422 dengan pesan di kolom jumlah_penerima.
+func TestBuatPeriode_JumlahPenerimaLewatHTTP(t *testing.T) {
+	srv := siapkanServer(t)
+	admin := klienBaru(t, srv)
+	admin.login("admin")
+	dasar := func(tambah map[string]any) map[string]any {
+		b := map[string]any{"nama": "Zakat Mal", "jenis": "zakat", "dana_tersedia": 3000000, "asnaf_diizinkan": []string{"fakir"}}
+		for k, v := range tambah {
+			b[k] = v
+		}
+		return b
+	}
+
+	var p struct {
+		Nominal int64 `json:"nominal_per_penerima"`
+	}
+	admin.minta("POST", "/api/periode", dasar(map[string]any{"jumlah_penerima": 3}), 201, &p)
+	if p.Nominal != 1000000 {
+		t.Fatalf("nominal_per_penerima = %d, mau 1000000 (3 jt ÷ 3 orang)", p.Nominal)
+	}
+
+	var e struct {
+		Fields map[string]string `json:"fields"`
+	}
+	admin.minta("POST", "/api/periode", dasar(map[string]any{"jumlah_penerima": 3, "nominal_per_penerima": 1000000}), 422, &e)
+	if e.Fields["jumlah_penerima"] == "" {
+		t.Errorf("kolom jumlah_penerima tidak dilaporkan saat nominal dan jumlah diisi bersamaan: %v", e)
+	}
+}
+
 // TestAlurDemo = skenario sidang: input data → ranking ARAS → persetujuan →
 // penyaluran → laporan, semua lewat HTTP. Angka K dicocokkan dengan docs/02.
 func TestAlurDemo_DariMustahikSampaiLaporan(t *testing.T) {

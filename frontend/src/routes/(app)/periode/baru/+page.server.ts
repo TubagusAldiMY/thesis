@@ -16,7 +16,9 @@ export const actions: Actions = {
 			nama: teks(fd, 'nama'),
 			jenis: teks(fd, 'jenis'),
 			dana: teks(fd, 'dana_tersedia'),
+			cara: teks(fd, 'cara') === 'jumlah' ? 'jumlah' : 'nominal',
 			nominal: teks(fd, 'nominal_per_penerima'),
+			jumlah: teks(fd, 'jumlah_penerima'),
 			asnaf: fd.getAll('asnaf_diizinkan').filter((v): v is string => typeof v === 'string')
 		};
 		// Angka boleh diketik "3.000.000"; NaN → 0 supaya Go yang menolak dengan pesan per kolom.
@@ -30,7 +32,11 @@ export const actions: Actions = {
 					nama: nilai.nama,
 					jenis: nilai.jenis,
 					dana_tersedia: angkaAtauNol(nilai.dana),
-					nominal_per_penerima: angkaAtauNol(nilai.nominal),
+					// Hanya satu cara yang dikirim: kolom cara lain dikosongkan walau masih berisi sisa ketikan.
+					// Jumlah orang selalu bulat, jadi pecahan dibuang agar JSON-nya diterima Go (int64).
+					...(nilai.cara === 'jumlah'
+						? { jumlah_penerima: Math.trunc(angkaAtauNol(nilai.jumlah)) }
+						: { nominal_per_penerima: angkaAtauNol(nilai.nominal) }),
 					asnaf_diizinkan: nilai.jenis === 'zakat' ? nilai.asnaf : []
 				}),
 			{ nilai }

@@ -161,7 +161,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/dashboard` | Beranda umum masjid bertema sama dengan landing (hero hijau tua berpola + ubin kaca 4 angka utama, tombol emas, **jadwal salat** hari ini): dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
 | `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
 | `/kriteria` | Edit nama, tipe, bobot, skala nilai (teks "1 = sehat", satu pilihan per baris), aktif/nonaktif, dan **tambah kriteria baru**; indikator total/aturan dihitung di layar, aturan akhir dijaga Go | admin ubah, ketua lihat |
-| `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung | semua / admin |
+| `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung. Dana dibagi lewat SALAH SATU: nominal per penerima, atau jumlah penerima (nominal = ⌊dana ÷ jumlah⌋ dihitung server; rumus tampilan di `lib/periode.ts`) | semua / admin |
 | `/periode/[id]/kandidat`, `/penilaian` | Centang kandidat; grid/kartu nilai + Hitung ARAS | admin |
 | `/periode/[id]/hasil` | Ranking, langkah hitung, panel keputusan, buka kembali | semua (keputusan: ketua) |
 | `/periode/[id]/penyaluran` | Catat per penerima, tutup periode | semua (catat: admin) |

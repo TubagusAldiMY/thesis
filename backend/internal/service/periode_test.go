@@ -65,6 +65,48 @@ func TestBuatPeriode_Sukses(t *testing.T) {
 			t.Errorf("kuota = %d, err = %v", p.Kuota(), err)
 		}
 	})
+
+	// Cara kedua membagi dana: pengurus mengisi jumlah penerima, nominal diturunkan dari dana.
+	jumlah := func(dana, n int64) func(*PeriodeInput) {
+		return func(in *PeriodeInput) { in.DanaTersedia, in.NominalPerPenerima, in.JumlahPenerima = dana, 0, n }
+	}
+	t.Run("jumlah penerima: 3 jt ÷ 3 orang = Rp 1 jt per orang, kuota 3", func(t *testing.T) {
+		p, err := e.svc.BuatPeriode(bg, user, zakat(jumlah(3_000_000, 3)))
+		if err != nil || p.NominalPerPenerima != 1_000_000 || p.Kuota() != 3 {
+			t.Errorf("nominal = %d, kuota = %d, err = %v", p.NominalPerPenerima, p.Kuota(), err)
+		}
+	})
+	t.Run("jumlah penerima tidak habis dibagi: 1 jt ÷ 3 = 333.333, kuota tetap 3", func(t *testing.T) {
+		p, err := e.svc.BuatPeriode(bg, user, zakat(jumlah(1_000_000, 3)))
+		if err != nil || p.NominalPerPenerima != 333_333 || p.Kuota() != 3 {
+			t.Errorf("nominal = %d, kuota = %d, err = %v", p.NominalPerPenerima, p.Kuota(), err)
+		}
+	})
+	t.Run("satu penerima mengambil seluruh dana", func(t *testing.T) {
+		p, err := e.svc.BuatPeriode(bg, user, zakat(jumlah(2_500_000, 1)))
+		if err != nil || p.NominalPerPenerima != 2_500_000 || p.Kuota() != 1 {
+			t.Errorf("nominal = %d, kuota = %d, err = %v", p.NominalPerPenerima, p.Kuota(), err)
+		}
+	})
+}
+
+// Kuota hasil mode jumlah penerima harus SELALU tepat sama dengan jumlah yang diminta; kombinasi yang
+// tidak bisa dipenuhi (pembulatan nominal ke bawah menambah kuota) harus ditolak, bukan disimpan salah.
+func TestBuatPeriode_JumlahPenerimaKuotaSelaluTepat(t *testing.T) {
+	e := baru(t)
+	user := e.user(t)
+	for _, dana := range []int64{10, 99, 1_000_000, 1_000_003, 3_500_000} {
+		for n := int64(1); n <= 12; n++ {
+			p, err := e.svc.BuatPeriode(bg, user, zakat(func(in *PeriodeInput) { in.DanaTersedia, in.NominalPerPenerima, in.JumlahPenerima = dana, 0, n }))
+			if err != nil {
+				cekValidasi(t, err, "jumlah_penerima") // ditolak harus dengan pesan di kolom jumlah penerima
+				continue
+			}
+			if int64(p.Kuota()) != n {
+				t.Errorf("dana %d ÷ %d orang: kuota = %d (nominal %d), mau %d", dana, n, p.Kuota(), p.NominalPerPenerima, n)
+			}
+		}
+	}
 }
 
 func TestBuatPeriode_Validasi(t *testing.T) {
@@ -83,6 +125,11 @@ func TestBuatPeriode_Validasi(t *testing.T) {
 		{"dana melebihi batas kolom", func(in *PeriodeInput) { in.DanaTersedia = maksUang + 1 }, "u", "dana_tersedia"},
 		{"nominal nol", func(in *PeriodeInput) { in.NominalPerPenerima = 0 }, "u", "nominal_per_penerima"},
 		{"nominal melebihi dana", func(in *PeriodeInput) { in.NominalPerPenerima = 3_000_001 }, "u", "nominal_per_penerima"},
+		{"nominal dan jumlah penerima sekaligus", func(in *PeriodeInput) { in.JumlahPenerima = 3 }, "u", "jumlah_penerima"},
+		{"jumlah penerima negatif", func(in *PeriodeInput) { in.NominalPerPenerima, in.JumlahPenerima = 0, -1 }, "u", "jumlah_penerima"},
+		{"jumlah penerima melebihi batas", func(in *PeriodeInput) { in.NominalPerPenerima, in.JumlahPenerima = 0, maksUang+1 }, "u", "jumlah_penerima"},
+		{"jumlah penerima melebihi dana", func(in *PeriodeInput) { in.NominalPerPenerima, in.JumlahPenerima = 0, 3_000_001 }, "u", "jumlah_penerima"},
+		{"dana terlalu kecil agar kuota tepat (10 ÷ 4)", func(in *PeriodeInput) { in.DanaTersedia, in.NominalPerPenerima, in.JumlahPenerima = 10, 0, 4 }, "u", "jumlah_penerima"},
 		{"zakat tanpa asnaf", func(in *PeriodeInput) { in.AsnafDiizinkan = nil }, "u", "asnaf_diizinkan"},
 		{"zakat dengan asnaf tidak dikenal", func(in *PeriodeInput) { in.AsnafDiizinkan = []domain.Asnaf{"xx"} }, "u", "asnaf_diizinkan"},
 		{"pembuat tidak diketahui", func(in *PeriodeInput) {}, "  ", "pembuat"},
