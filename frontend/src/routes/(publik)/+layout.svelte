@@ -7,9 +7,12 @@
 <script lang="ts">
 	import IkonMasjid from '$lib/components/IkonMasjid.svelte';
 	import { masjid } from '$lib/masjid';
+	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	// Hanya formulir donasi yang memakai tata letak dua kolom; halaman lain (kuitansi, status) tetap sempit.
+	const lebar = $derived(page.route.id === '/(publik)/donasi');
 </script>
 
 <div class="bingkai">
@@ -21,7 +24,7 @@
 		<a class="tautan-login" href="/login">Masuk pengurus</a>
 	</header>
 
-	<main class="isi">
+	<main class="isi" class:lebar>
 		{@render children()}
 	</main>
 
@@ -64,6 +67,9 @@
 		max-width: 680px;
 		margin: 0 auto;
 		padding: 1.5rem 1rem 3rem;
+	}
+	.isi.lebar {
+		max-width: 1240px;
 	}
 	.bawah {
 		padding: 1rem;

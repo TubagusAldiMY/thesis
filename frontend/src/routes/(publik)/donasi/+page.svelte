@@ -36,7 +36,7 @@
 <svelte:head><title>Donasi zakat & infak · {masjid.nama}</title></svelte:head>
 
 <div class="halaman">
-	<header class="kepala">
+	<aside class="hero">
 		<span class="lencana">
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z" /><path d="M8.5 12l2.5 2.5L15.5 9" />
@@ -44,25 +44,29 @@
 			Dikelola pengurus masjid
 		</span>
 		<h1>Donasi Zakat & Infak</h1>
-		<p class="redup">
+		<p class="pengantar">
 			Salurkan zakat dan infak Anda melalui {masjid.nama}. Setelah pembayaran berhasil, kuitansi digital dapat langsung dilihat dan dicetak.
 		</p>
+
+		<ol class="langkah">
+			<li><span class="no">1</span><div><strong>Isi data donasi</strong><small>Nama, jenis, dan jumlah donasi.</small></div></li>
+			<li><span class="no">2</span><div><strong>Bayar dengan aman</strong><small>QRIS, virtual account, atau e-wallet.</small></div></li>
+			<li><span class="no">3</span><div><strong>Terima kuitansi</strong><small>Terbit otomatis setelah pembayaran terkonfirmasi.</small></div></li>
+		</ol>
+
 		<ul class="jaminan">
 			<li>
-				<span class="ikon hijau" aria-hidden="true">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-				</span>
-				Data terlindungi
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+				Nomor HP disimpan terenkripsi
 			</li>
 			<li>
-				<span class="ikon kuning" aria-hidden="true">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h8l4 4v14H7z" /><path d="M10 12h6M10 16h6" /></svg>
-				</span>
-				Kuitansi otomatis
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7z" /><path d="M10 12h6M10 16h6" /></svg>
+				Kuitansi resmi bernomor
 			</li>
 		</ul>
-	</header>
+	</aside>
 
+	<div class="sisi-form">
 	{#if !data.aktif}
 		<p class="kotak-info" role="status">
 			Donasi online belum diaktifkan oleh pengurus masjid. Silakan hubungi pengurus{masjid.kontak ? ` di ${masjid.kontak}` : ''} atau datang langsung ke masjid.
@@ -156,26 +160,37 @@
 			</div>
 		</form>
 	{/if}
+	</div>
 </div>
 
 <style>
 	.halaman {
 		display: grid;
-		gap: 1.25rem;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+		gap: 2rem;
+		align-items: start;
 	}
-	.kepala {
+	/* Kolom kiri: kartu hijau berisi pengantar dan langkah; menempel saat formulir panjang di desktop. */
+	.hero {
 		display: grid;
-		gap: 0.75rem;
+		gap: 1.1rem;
+		padding: 2rem;
+		border-radius: 24px;
+		color: #fff;
+		background: linear-gradient(160deg, var(--hijau) 0%, var(--hijau-tua) 100%);
+		position: sticky;
+		top: 1.5rem;
 	}
-	.kepala h1 {
+	.hero h1 {
 		margin: 0;
-		font-size: clamp(1.75rem, 6vw, 2.25rem);
+		font-size: clamp(1.9rem, 4vw, 2.6rem);
 		letter-spacing: -0.02em;
-		line-height: 1.15;
+		line-height: 1.12;
 	}
-	.kepala p {
+	.pengantar {
 		margin: 0;
-		line-height: 1.55;
+		line-height: 1.6;
+		color: rgb(255 255 255 / 0.85);
 	}
 	.lencana {
 		justify-self: start;
@@ -184,45 +199,57 @@
 		gap: 0.4rem;
 		padding: 0.3rem 0.75rem;
 		border-radius: 999px;
-		background: var(--hijau-muda);
-		color: var(--hijau-tua);
+		background: rgb(255 255 255 / 0.16);
 		font-size: 0.8rem;
 		font-weight: 600;
 	}
+	.langkah {
+		list-style: none;
+		margin: 0.4rem 0 0;
+		padding: 1.1rem 0 0;
+		border-top: 1px solid rgb(255 255 255 / 0.2);
+		display: grid;
+		gap: 1rem;
+	}
+	.langkah li {
+		display: flex;
+		gap: 0.85rem;
+		align-items: flex-start;
+	}
+	.langkah .no {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: var(--kuning);
+		color: var(--kuning-teks);
+		font-weight: 700;
+		font-size: 0.85rem;
+	}
+	.langkah div {
+		display: grid;
+		gap: 0.1rem;
+	}
+	.langkah small {
+		color: rgb(255 255 255 / 0.75);
+		font-size: 0.85rem;
+	}
 	.jaminan {
 		list-style: none;
-		margin: 0.25rem 0 0;
-		padding: 0;
+		margin: 0;
+		padding: 1rem 0 0;
+		border-top: 1px solid rgb(255 255 255 / 0.2);
 		display: grid;
-		grid-template-columns: 1fr 1fr;
 		gap: 0.6rem;
+		font-size: 0.875rem;
 	}
 	.jaminan li {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		padding: 0.55rem 0.75rem;
-		background: var(--kartu);
-		border: 1px solid var(--garis);
-		border-radius: 12px;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-	.ikon {
-		display: inline-grid;
-		place-items: center;
-		width: 30px;
-		height: 30px;
-		border-radius: 9px;
-		flex: none;
-	}
-	.ikon.hijau {
-		background: var(--hijau-muda);
-		color: var(--hijau);
-	}
-	.ikon.kuning {
-		background: var(--kuning);
-		color: var(--kuning-teks);
+		color: rgb(255 255 255 / 0.9);
 	}
 
 	.kartu-form {
@@ -385,16 +412,10 @@
 		font-size: 0.8rem;
 	}
 
-	/* Tombol aksi menempel di bawah layar saat form panjang (ponsel). */
+	/* Tombol aksi: biasa di desktop, menempel di bawah layar pada ponsel (formulir panjang). */
 	.aksi {
-		position: sticky;
-		bottom: 0;
 		display: grid;
 		gap: 0.5rem;
-		margin: 0 -1.25rem -1.25rem;
-		padding: 0.9rem 1.25rem 1.1rem;
-		background: linear-gradient(to bottom, transparent, var(--kartu) 30%);
-		border-radius: 0 0 20px 20px;
 	}
 	.besar {
 		width: 100%;
@@ -416,6 +437,35 @@
 		width: 1px;
 		height: 1px;
 		overflow: hidden;
+	}
+	@media (max-width: 900px) {
+		.halaman {
+			grid-template-columns: 1fr;
+			gap: 1.25rem;
+		}
+		.hero {
+			position: static;
+			padding: 1.5rem;
+		}
+	}
+	@media (max-width: 700px) {
+		/* Di ponsel formulir harus langsung terlihat; langkah dan jaminan cukup di desktop/tablet. */
+		.langkah,
+		.jaminan {
+			display: none;
+		}
+		.hero {
+			gap: 0.75rem;
+			padding: 1.25rem;
+		}
+		.aksi {
+			position: sticky;
+			bottom: 0;
+			margin: 0 -1.25rem -1.25rem;
+			padding: 0.9rem 1.25rem 1.1rem;
+			background: linear-gradient(to bottom, transparent, var(--kartu) 30%);
+			border-radius: 0 0 20px 20px;
+		}
 	}
 	@media (max-width: 420px) {
 		.kartu-form {
