@@ -24,7 +24,7 @@ Judul skripsi: *Sistem Pendukung Keputusan Penyaluran Dana Zakat dan Infak Masji
 8. **Pekerjaan di sisi desain** (dokumen sudah menetapkan acuannya di dokumen 04 bagian 4): ganti grid Penilaian tablet yang terpotong dengan kartu; sembunyikan scrollbar pada chip filter Android; ubah label "Dashboard" → "Beranda" di desktop; gambar halaman Profil & password, daftar Laporan, dan Tentang aplikasi; tambah tombol "Lihat ranking run lama" dan "Kembalikan" di Android; samakan isi layar laporan dengan template cetak.
 
 ## Status
-Tahap: **implementasi fitur lengkap (FR-01 s.d. FR-22)** — tinggal validasi & pengujian pengguna. Sudah ada: backend Go (`aras`, `store`, `service`, `httpapi`, CLI `migrate` & `useradmin`), 3 migrasi MySQL, frontend SvelteKit untuk semua rute di dokumen 04, dan `scripts/seed-demo.sh` untuk data demo. Per 13/10/2026: 124 test backend (termasuk integrasi MySQL 8.0 dan alur demo lewat HTTP) dan 24 test frontend lulus; `svelte-check` 0 error.
+Tahap: **implementasi fitur lengkap (FR-01 s.d. FR-22)** — tinggal validasi & pengujian pengguna. Sudah ada: backend Go (`aras`, `store`, `service`, `httpapi`, CLI `migrate` & `useradmin`), 3 migrasi MySQL, frontend SvelteKit untuk semua rute di dokumen 04, dan `scripts/seed-demo.sh` untuk data demo. Per 19/10/2026: 180 test backend (termasuk integrasi MySQL 8.0, alur demo lewat HTTP, dan `-race`) dan 141 test frontend lulus; `svelte-check` 0 error 0 warning.
 
 Belum: keputusan di daftar di atas, pemeriksaan visual di browser terhadap mockup (desktop/tablet/Android), pengujian black-box & UAT bersama pengurus masjid.
 
