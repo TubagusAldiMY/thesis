@@ -78,6 +78,9 @@ services:
       PUBLIC_MASJID_FOTO: ${PUBLIC_MASJID_FOTO:-}
       PUBLIC_MASJID_LINTANG: ${PUBLIC_MASJID_LINTANG:-}
       PUBLIC_MASJID_BUJUR: ${PUBLIC_MASJID_BUJUR:-}
+      # Client Key Midtrans (publik) untuk Snap popup di /donasi. Kosong = muzaki dialihkan
+      # ke halaman bayar Midtrans biasa.
+      PUBLIC_MIDTRANS_CLIENT_KEY: ${PUBLIC_MIDTRANS_CLIENT_KEY:-}
     ports:
       # 3100 sudah dipakai payment_loki (project lain) di mesin ini, jadi 3101.
       # Ganti WEB_PORT dan WEB_ORIGIN bersamaan di .env bila ingin port lain.

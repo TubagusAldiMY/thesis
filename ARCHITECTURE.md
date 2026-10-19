@@ -169,7 +169,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/periode/[id]/laporan`, `/laporan.csv` | Template cetak + unduh CSV | semua |
 | `/audit`, `/laporan`, `/profil`, `/tentang`, `/lainnya` | Audit; daftar laporan; ganti password; tentang; menu HP | semua |
 | `/penerimaan`, `/penerimaan/baru`, `/penerimaan/[id]` | Menu pengurus **Donasi**: daftar + ringkasan + penanda donasi web baru; catat donasi tunai/transfer; detail (kuitansi, WhatsApp, batal). Penanda angka di menu dari `GET /api/donasi/ringkas` (dimuat `(app)/+layout.server.ts`) | semua lihat; Admin mencatat/membatalkan |
-| `/donasi`, `/donasi/lanjut`, `/donasi/selesai`, `/donasi/tiruan` | **Publik**: formulir donasi → perantara di domain sendiri (CSP `form-action 'self'` memblokir pengalihan langsung ke gateway) → halaman bayar gateway → status (diperbarui otomatis). `/donasi/tiruan` hanya berfungsi pada penyedia tiruan | publik |
+| `/donasi`, `/donasi/lanjut`, `/donasi/selesai`, `/donasi/tiruan` | **Publik**: formulir donasi → perantara di domain sendiri (CSP `form-action 'self'` memblokir pengalihan langsung ke gateway) → popup Snap Midtrans (bila `PUBLIC_MIDTRANS_CLIENT_KEY` diisi; `lib/snap.ts` menurunkan token dari tautan bayar) atau halaman bayar gateway → status (diperbarui otomatis). `/donasi/tiruan` hanya berfungsi pada penyedia tiruan | publik |
 | `/kuitansi/[kode]` | **Publik**: kuitansi cetak/PDF dengan terbilang; stempel DIBATALKAN bila dibatalkan. Kode di path tidak dicatat di log | pemegang kode |
 | `/midtrans/notifikasi` (POST) | Penerima webhook Midtrans; hanya meneruskan body mentah ke Go (Go sendiri tidak publik) | gateway |
 | `/logout` (POST) | Cabut sesi + hapus cookie | semua |
@@ -180,7 +180,7 @@ Pola tiap halaman: `+page.server.ts` memanggil `api()` (load) atau `aksi(() => a
 - Argon2id; sesi opaque di DB (logout benar-benar mencabut); cookie `HttpOnly; SameSite=Strict; Secure` (dev: `secure` mati di localhost).
 - Deny-by-default: setiap rute Go dibungkus `peran(...)`; frontend juga `wajibAdmin` untuk halaman Admin.
 - CSRF: cek `Origin` bawaan SvelteKit untuk form action; Go hanya menerima cookie SameSite=Strict.
-- CSP otomatis SvelteKit (`script-src 'self'`), `X-Frame-Options: DENY`, `nosniff`, HSTS di production.
+- CSP otomatis SvelteKit (`script-src 'self'` + hanya dua host Snap Midtrans `app.sandbox.midtrans.com`/`app.midtrans.com` untuk popup donasi), `X-Frame-Options: DENY`, `nosniff`, HSTS di production.
 - NIK/HP AES-256-GCM, hanya 4 digit terakhir yang tampil; tidak pernah masuk log/audit/CSV.
 - Log akses tidak mencatat query string (bisa berisi nama), dan segmen rahasia di path (`/api/publik/donasi/{kode}`, `/kuitansi/{kode}`) disamarkan (`pathLog`).
 - **Endpoint publik donasi** (satu-satunya selain login/healthz tanpa `peran()`): pembatas laju per IP (memori), validasi ketat di service, kolom jebakan anti-bot di form, kode rahasia 128 bit untuk akses satu donasi (format salah = 404), dan HP terenkripsi AES-256-GCM. Data yang dikirim ke gateway hanya order_id, jumlah, nama item, dan nama donatur (tanpa HP/alamat). Webhook dijaga tanda tangan SHA512 (perbandingan waktu-konstan) + pencocokan jumlah, bukan sesi; status donasi tidak pernah berubah karena parameter di URL pengalihan.

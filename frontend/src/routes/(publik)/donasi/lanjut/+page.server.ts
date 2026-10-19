@@ -2,8 +2,11 @@
 // ke domain gateway dari form action? CSP aplikasi memakai `form-action 'self'`, dan
 // peramban (Chrome) juga menerapkannya pada pengalihan setelah pengiriman form:
 // pengalihan 303 langsung ke domain lain akan DIBLOKIR pada form tanpa JavaScript.
-// Jadi form dialihkan ke halaman ini (domain sendiri), lalu halaman ini yang
-// membawa muzaki ke gateway lewat navigasi biasa (meta refresh + tautan).
+// Jadi form dialihkan ke halaman ini (domain sendiri). Bila Client Key tersedia,
+// halaman membuka Snap popup Midtrans di atas halaman ini (muzaki tidak pergi dari
+// situs masjid); bila tidak (atau tanpa JavaScript), ia membawa muzaki ke gateway
+// lewat navigasi biasa (meta refresh + tautan).
+import { env } from '$env/dynamic/public';
 import { redirect } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
 import type { DonasiPublik } from '$lib/types';
@@ -17,5 +20,6 @@ export const load: PageServerLoad = async (event) => {
 	const p = await api<DonasiPublik>(event, 'GET', `/api/publik/donasi/${kode}`);
 	// Sudah dibayar/kedaluwarsa/gagal (atau tautan bayar hilang): tidak ada yang perlu dibayar lagi.
 	if (p.status !== 'menunggu' || !p.bayar_url) redirect(303, '/donasi/selesai?kode=' + kode);
-	return { p };
+	// Client Key Midtrans bersifat publik (dipakai snap.js di peramban). Kosong = tanpa popup.
+	return { p, kunciKlien: env.PUBLIC_MIDTRANS_CLIENT_KEY ?? '' };
 };

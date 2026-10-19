@@ -56,6 +56,7 @@ Backend memakai `App/.env` (contoh: [.env.example](.env.example)); frontend mema
 | `PAYMENT_PROVIDER` | Go | Donasi online: kosong = nonaktif, `midtrans`, atau `tiruan` (palsu, hanya dev/demo). Lihat bagian "Donasi online" |
 | `MIDTRANS_SERVER_KEY` | Go | Server Key Midtrans (**rahasia**). Wajib bila `PAYMENT_PROVIDER=midtrans` |
 | `MIDTRANS_SNAP_URL` | Go | Alamat Snap; kosong = sandbox |
+| `PUBLIC_MIDTRANS_CLIENT_KEY` | SvelteKit | Client Key Midtrans (bukan rahasia). Diisi = pembayaran tampil sebagai popup Snap di `/donasi/lanjut`; kosong = muzaki dialihkan ke halaman bayar Midtrans. Untuk `npm run dev` isi juga di `frontend/.env` |
 | `WEB_ORIGIN` | Go | Alamat publik frontend untuk pengalihan setelah bayar; wajib bila `PAYMENT_PROVIDER` aktif (di Docker sama dengan `WEB_ORIGIN` frontend) |
 | `DEMO_PASSWORD` | skrip | Password akun demo lokal untuk `scripts/seed-demo.sh` |
 | `API_URL` | SvelteKit | Alamat Go API (bawaan `http://127.0.0.1:8090`) |
@@ -210,12 +211,12 @@ Halaman publik **`/donasi`** (tanpa login) menerima zakat/infak dari muzaki lewa
 **Mencoba tanpa akun Midtrans** (pembayaran PALSU, hanya development): di `.env` set `PAYMENT_PROVIDER=tiruan`, `COOKIE_SECURE=false`, dan `WEB_ORIGIN` ke alamat frontend (mis. `http://localhost:5173` untuk `npm run dev`), lalu jalankan ulang Go API. Buka `/donasi`, isi form, dan tombol "Simulasikan bayar berhasil" akan mengubah donasi menjadi lunas lewat jalur notifikasi yang sama dengan gateway asli. Server **menolak start** bila `tiruan` dipakai dengan `COOKIE_SECURE` bukan `false`.
 
 **Midtrans sandbox**:
-1. Daftar akun Midtrans, buka mode **Sandbox**, salin **Server Key**.
-2. `.env`: `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY=…`, `WEB_ORIGIN=https://alamat-publik` (alamat yang dibuka muzaki). Biarkan `MIDTRANS_SNAP_URL` kosong untuk sandbox.
+1. Daftar akun Midtrans, buka mode **Sandbox**, salin **Server Key** dan **Client Key** (Access Keys → General Credentials).
+2. `.env`: `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY=…`, `PUBLIC_MIDTRANS_CLIENT_KEY=…` (opsional, untuk popup; di Docker perlu `docker compose --env-file .env up -d --build web`), `WEB_ORIGIN=https://alamat-publik` (alamat yang dibuka muzaki). Biarkan `MIDTRANS_SNAP_URL` kosong untuk sandbox.
 3. Di dashboard Midtrans, isi **Notification URL** (webhook) dengan `https://alamat-publik/midtrans/notifikasi`. Alamat ini harus bisa dijangkau dari internet (untuk uji lokal pakai tunnel HTTPS); Go API sendiri tidak dibuka ke publik, karena SvelteKit meneruskan notifikasinya.
 4. Jalankan ulang Go API, buka `/donasi`, dan bayar memakai metode uji dari dokumentasi Midtrans.
 
-**Alur & keamanan**: donasi tersimpan berstatus *menunggu* → muzaki dibawa ke halaman bayar Midtrans → Midtrans memanggil webhook dengan tanda tangan SHA512 → Go memverifikasi tanda tangan **dan** kecocokan jumlah, lalu mengubah status menjadi *diterima* dan menerbitkan nomor kuitansi `KWT/<tahun>/<urut>`. Status tidak pernah berubah hanya karena muzaki kembali ke halaman "selesai". Kuitansi dibuka lewat tautan berkode rahasia 128 bit (`/kuitansi/<kode>`); kode itu tidak dicatat di log. Pembuatan donasi publik dibatasi 5 permintaan per 10 menit per IP.
+**Alur & keamanan**: donasi tersimpan berstatus *menunggu* → muzaki membayar lewat popup Snap di atas halaman masjid (bila Client Key diisi) atau di halaman bayar Midtrans → hasil callback popup tidak dipercaya, hanya membawa muzaki ke halaman status → Midtrans memanggil webhook dengan tanda tangan SHA512 → Go memverifikasi tanda tangan **dan** kecocokan jumlah, lalu mengubah status menjadi *diterima* dan menerbitkan nomor kuitansi `KWT/<tahun>/<urut>`. Status tidak pernah berubah hanya karena muzaki kembali ke halaman "selesai". Kuitansi dibuka lewat tautan berkode rahasia 128 bit (`/kuitansi/<kode>`); kode itu tidak dicatat di log. Pembuatan donasi publik dibatasi 5 permintaan per 10 menit per IP.
 
 ## Production
 Ringkas (satu server masjid / VPS kecil):
