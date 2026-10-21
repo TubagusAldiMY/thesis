@@ -50,6 +50,18 @@ export function tanggal(iso: string): string {
 	return fmtTanggal.format(new Date(iso));
 }
 
+const fmtTanggalPanjang = new Intl.DateTimeFormat('id-ID', {
+	day: 'numeric',
+	month: 'long',
+	year: 'numeric',
+	timeZone: 'Asia/Jakarta'
+});
+
+/** Waktu ISO → "12 Oktober 2026" menurut WIB (kuitansi; PDF di backend memakai bentuk yang sama). */
+export function tanggalPanjang(iso: string): string {
+	return fmtTanggalPanjang.format(new Date(iso));
+}
+
 /** Waktu ISO → "12/10/2026 18.20" menurut WIB. */
 export function waktu(iso: string): string {
 	return fmtWaktu.format(new Date(iso));

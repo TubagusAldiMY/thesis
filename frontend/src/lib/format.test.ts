@@ -11,6 +11,7 @@ import {
 	nomorWA,
 	rupiahRingkas,
 	tanggal,
+	tanggalPanjang,
 	tanggalSaja,
 	tautanWA,
 	terbilang
@@ -42,6 +43,12 @@ describe('format id-ID', () => {
 		expect(tanggalSaja('2026-10-12T00:00:00Z')).toBe('12/10/2026');
 		expect(tanggalSaja('2026-01-05')).toBe('05/01/2026');
 	});
+
+	it.each([
+		['2026-10-21T02:14:00Z', '21 Oktober 2026'],
+		['2026-12-31T17:30:00Z', '1 Januari 2027'], // lewat tengah malam WIB → tahun berganti
+		['2026-03-05T00:00:00+07:00', '5 Maret 2026']
+	])('tanggalPanjang(%s) = %s', (iso, mau) => expect(tanggalPanjang(iso)).toBe(mau));
 
 	it.each([
 		['3.000.000', 3000000],
