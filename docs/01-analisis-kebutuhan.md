@@ -40,7 +40,7 @@ Menu per peran (acuan: folder `App/Design/`):
 | FR-01 | Pengguna dapat login dengan username + password; sesi berakhir saat logout. Setelah 5 kali gagal berturut-turut (per username + IP) login dikunci 15 menit; pesan error generik dengan "sisa percobaan", juga untuk username yang tidak terdaftar | Semua |
 | FR-02 | Sistem membatasi akses sesuai peran (deny-by-default): menu yang bukan haknya disembunyikan, dan akses langsung ke URL-nya dibalas 403 dengan halaman "Akses tidak diizinkan"; alamat yang tidak ada dibalas halaman 404 | Semua |
 | FR-03 | Admin dapat menambah dan mengubah mustahik (nama, NIK, alamat, no. HP, golongan asnaf) serta menonaktifkannya lewat kotak centang "Mustahik aktif". Tidak ada tombol hapus; mustahik nonaktif tidak muncul sebagai kandidat baru, tetapi riwayat hasil dan penyaluran lamanya tetap tersimpan | Admin |
-| FR-04 | Admin dapat mengubah tipe (benefit/cost) dan bobot kriteria; bobot dalam kelipatan 0,05 | Admin |
+| FR-04 | Admin dapat mengubah nama, tipe (benefit/cost), bobot (kelipatan 0,05), keterangan skala, dan status aktif kriteria, serta menambah kriteria baru; kriteria tidak dihapus, hanya dinonaktifkan (2–10 kriteria aktif) | Admin |
 | FR-05 | Sistem menolak simpan bila total bobot kriteria aktif ≠ 1 (dihitung sebagai bilangan bulat persen, Σ = 100) | Admin |
 | FR-06 | Admin dapat membuat periode: nama, jenis (zakat/infak), dana tersedia, nominal per penerima | Admin |
 | FR-07 | Admin dapat memilih mustahik kandidat untuk suatu periode (zakat: hanya asnaf yang sesuai) | Admin |
@@ -52,9 +52,9 @@ Menu per peran (acuan: folder `App/Design/`):
 | FR-13 | Admin mencatat realisasi penyaluran (tanggal, nominal) hanya untuk periode berstatus *disetujui*; tiap penerima sekali; total nominal tercatat tidak boleh melebihi dana tersedia periode | Admin |
 | FR-14 | Sistem membuat laporan periode dengan **satu template** untuk semua ukuran layar: kop masjid, ringkasan, A. kriteria & bobot, B. ranking (S, K, keterangan penerima/cadangan), C. realisasi penyaluran + total, kolom tanda tangan Admin & Ketua. Keluaran: cetak/Simpan PDF (lewat dialog cetak browser) dan CSV | Admin, Ketua |
 | FR-15 | Perubahan data penting (nilai, bobot, persetujuan, penyaluran) tercatat di audit log | Sistem |
-| FR-16 | Landing publik menampilkan penjelasan, 5 kriteria + bobot, rumus ARAS, dan contoh ranking **statis** (bukan data database) | Umum |
+| FR-16 | Landing publik menampilkan profil masjid, transparansi dana (angka agregat tanpa data pribadi), jadwal salat, dan ringkasan penyaluran; penjelasan metode (5 kriteria + bobot, rumus ARAS, contoh ranking **statis**, bukan data database) ada di halaman publik `/cara-kerja` | Umum |
 | FR-17 | Akun Admin/Ketua dibuat dan di-reset passwordnya lewat CLI `cmd/useradmin` (tidak ada halaman kelola akun) | Pengembang |
-| FR-18 | Dashboard menampilkan 4 kartu ringkasan (mustahik aktif per asnaf, periode berjalan, dana periode aktif, total tersalur), stepper 5 langkah periode aktif, dan periode terbaru | Admin, Ketua |
+| FR-18 | Dashboard pengurus menampilkan kartu ringkasan penerimaan, penyaluran, dan saldo tercatat, jadwal salat, ringkasan dana zakat dan infak, grafik penerimaan-penyaluran 12 bulan, penerimaan menurut jenis, donasi terbaru, serta bagian penyaluran metode ARAS (mustahik aktif per asnaf, stepper 5 langkah periode aktif, dan periode terbaru) | Admin, Ketua |
 | FR-19 | Periode berstatus *ditolak* menampilkan catatan Ketua + riwayat run; Admin dapat "Buka kembali" (kembali ke draft) dan tetap melihat ranking run lama | Admin |
 | FR-20 | Audit log bisa difilter per kategori (Login, Data & penilaian, Hitung, Keputusan, Penyaluran), menampilkan **nama pengguna** pelaku, hanya-baca | Admin, Ketua |
 | FR-21 | Pengguna dapat mengganti password sendiri ("Profil & password"): wajib password lama, password baru ≥ 12 karakter; sesi lain milik user itu dicabut | Admin, Ketua |

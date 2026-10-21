@@ -56,12 +56,13 @@ Acuan visual: folder `App/Design/` (`SPK Zakat ARAS — UI.html`, `.pdf`, dan `S
 
 | Route | Halaman | File desain (desktop) | Admin | Ketua |
 |-------|---------|-----------------------|:-----:|:-----:|
-| `/` | Landing publik, statis (prerender), tanpa query DB | `Landing Page.png` | publik | publik |
+| `/` | Landing publik: profil masjid, transparansi dana (angka agregat dari `GET /api/publik/ringkasan`), jadwal salat, ringkasan penyaluran, kontak. *Desain awal memuat penjelasan metode; kini ada di `/cara-kerja`* | `Landing Page.png` | publik | publik |
+| `/cara-kerja` | Penjelasan metode ARAS untuk awam: gagasan dasar, 5 kriteria + bobot, contoh hitung langkah demi langkah (statis, bukan data database), aturan tambahan, tanya jawab | – *(dibuat setelah desain)* | publik | publik |
 | `/login` | Login + pesan error & sisa percobaan | `Login.png` | publik | publik |
-| `/dashboard` | 4 kartu ringkasan, stepper 5 langkah, periode terbaru; *empty state* saat belum ada data | `Dashboard.png`, `Kosong 403 404.png` | ✓ | ✓ (tanpa "+ Buat periode") |
+| `/dashboard` | Kartu ringkasan penerimaan/penyaluran/saldo, jadwal salat, dana zakat dan infak, grafik 12 bulan, bagian **Penyaluran (metode ARAS)** (stepper 5 langkah, periode terbaru); *empty state* saat belum ada data. *Desain awal hanya 4 kartu penyaluran* | `Dashboard.png`, `Kosong 403 404.png` | ✓ | ✓ (tanpa "+ Buat periode") |
 | `/mustahik` | Daftar + pencarian + chip Semua/Fakir/Miskin; tombol **Tambah** (di Android/tablet berbentuk tombol mengambang) | `Mustahik.png`, `Tablet · Mustahik.png`, `Android · Mustahik.png` | ✓ | – |
 | `/mustahik/baru`, `/mustahik/[id]` | Form tambah / ubah mustahik: nama, NIK, asnaf, No. HP (opsional), alamat, kotak centang **Mustahik aktif**. Tablet & Android: **halaman penuh** (di Android dibuka dengan mengetuk baris daftar). Desktop: ditampilkan sebagai **panel samping** di sebelah daftar — route-nya sama, hanya layout yang berbeda | `Ubah Tambah Mustahik.png` *(belum ditinjau)*, `Tablet · Form Mustahik.png`, `Android · Form Mustahik.png` | ✓ | – |
-| `/kriteria` | Ubah tipe & bobot, indikator Σ bobot, tombol Kembalikan/Simpan | `Kriteria & Bobot.png` | ✓ ubah | lihat saja |
+| `/kriteria` | Ubah nama, tipe, bobot, skala, dan status aktif; tambah kriteria; indikator Σ bobot, tombol Kembalikan/Simpan | `Kriteria & Bobot.png` | ✓ ubah | lihat saja |
 | `/periode` | Daftar + chip filter status (Semua/Draft/Dihitung/Disetujui/Ditolak/Selesai) | `Daftar Periode.png` | ✓ | lihat saja |
 | `/periode/baru` | Form buat periode + kartu kuota & sisa dana langsung | `Buat Periode.png` | ✓ | – |
 | `/periode/[id]` | Kepala (status, dana, nominal, kuota, asnaf) + 4 tab: **Kandidat**, **Penilaian**, **Hasil**, **Penyaluran** | `Periode — Kandidat.png`, `— Penilaian.png`, `— Hasil ARAS.png`, `— Penyaluran.png` | semua tab | tab Hasil + keputusan |
