@@ -19,6 +19,7 @@ import (
 
 	"spkzakat/internal/crypto"
 	"spkzakat/internal/httpapi"
+	"spkzakat/internal/kuitansi"
 	"spkzakat/internal/notif"
 	"spkzakat/internal/payment"
 	"spkzakat/internal/service"
@@ -45,6 +46,9 @@ type config struct {
 	// emailKetua kosong semua = tidak ada pemberitahuan.
 	smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom string
 	emailKetua                                       string
+	// Kop email dan PDF kuitansi. Memakai variabel PUBLIC_MASJID_* yang sama dengan
+	// frontend supaya identitas masjid cukup diisi sekali di .env.
+	masjid kuitansi.Identitas
 }
 
 func muatConfig() (config, error) {
@@ -91,6 +95,12 @@ func muatConfig() (config, error) {
 	c.smtpHost, c.smtpPort = os.Getenv("SMTP_HOST"), os.Getenv("SMTP_PORT")
 	c.smtpUser, c.smtpPass, c.smtpFrom = os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASSWORD"), os.Getenv("SMTP_FROM")
 	c.emailKetua = os.Getenv("NOTIF_EMAIL_KETUA")
+	c.masjid = kuitansi.Identitas{
+		Nama: os.Getenv("PUBLIC_MASJID_NAMA"), Alamat: os.Getenv("PUBLIC_MASJID_ALAMAT"), Kontak: os.Getenv("PUBLIC_MASJID_KONTAK"),
+	}
+	if c.masjid.Nama == "" {
+		c.masjid.Nama = "Masjid Jami Al-Barokah" // bawaan yang sama dengan frontend/src/lib/masjid.ts
+	}
 	if (c.smtpHost == "") != (c.emailKetua == "") {
 		return c, errors.New("SMTP_HOST dan NOTIF_EMAIL_KETUA harus diisi bersamaan (keduanya kosong = tanpa pemberitahuan email)")
 	}
@@ -114,6 +124,7 @@ func pasangPemberitahu(cfg config, svc *service.Service, log *slog.Logger) error
 		return err
 	}
 	svc.AturPemberitahu(e, cfg.webOrigin)
+	svc.AturMasjid(cfg.masjid)
 	log.Info("pemberitahuan email donasi aktif", "smtp_host", cfg.smtpHost) // alamat email tidak dilog (data pribadi)
 	return nil
 }

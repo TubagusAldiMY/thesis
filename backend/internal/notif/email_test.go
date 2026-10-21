@@ -2,15 +2,20 @@ package notif
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"mime"
+	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"strings"
 	"testing"
 	"time"
+
+	"spkzakat/internal/domain"
 )
 
 func TestNewEmail_Validasi(t *testing.T) {
@@ -59,7 +64,7 @@ func TestBangunPesan_AmanDanBisaDibacaBalik(t *testing.T) {
 	subjek := "Donasi baru Rp 50.000 – Jamʻiyyah\r\nBcc: penyusup@evil.id"
 	isi := "Baris satu\nBaris dua — é\n" + strings.Repeat("panjang ", 40)
 
-	raw, err := bangunPesan(*dari, *ke, subjek, isi, time.Date(2026, 10, 21, 7, 0, 0, 0, time.UTC))
+	raw, err := bangunPesan(*dari, *ke, domain.Pesan{Subjek: subjek, Teks: isi}, time.Date(2026, 10, 21, 7, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,6 +88,169 @@ func TestBangunPesan_AmanDanBisaDibacaBalik(t *testing.T) {
 	}
 	if got := strings.ReplaceAll(string(body), "\r\n", "\n"); got != isi {
 		t.Errorf("isi terbaca balik:\n%q\nmau:\n%q", got, isi)
+	}
+}
+
+// bacaBagian membaca satu bagian multipart mentah (tanpa dekode otomatis) dan
+// mendekode isinya sesuai Content-Transfer-Encoding.
+func bacaBagian(t *testing.T, p *multipart.Part) []byte {
+	t.Helper()
+	var r io.Reader = p
+	switch cte := p.Header.Get("Content-Transfer-Encoding"); cte {
+	case "quoted-printable":
+		r = quotedprintable.NewReader(p)
+	case "base64":
+		r = base64.NewDecoder(base64.StdEncoding, p)
+	default:
+		t.Fatalf("Content-Transfer-Encoding tak terduga: %q", cte)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("dekode bagian: %v", err)
+	}
+	return b
+}
+
+// bagianBerikut mengambil bagian berikutnya dan memastikan tipenya; mengembalikan
+// bagian + parameter tipenya (boundary, name).
+func bagianBerikut(t *testing.T, mr *multipart.Reader, tipe string) (*multipart.Part, map[string]string) {
+	t.Helper()
+	p, err := mr.NextRawPart()
+	if err != nil {
+		t.Fatalf("bagian %s tidak ada: %v", tipe, err)
+	}
+	mt, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
+	if err != nil || mt != tipe {
+		t.Fatalf("tipe bagian = %q (%v), mau %q", mt, err, tipe)
+	}
+	return p, params
+}
+
+func tidakAdaLagi(t *testing.T, mr *multipart.Reader) {
+	t.Helper()
+	if p, err := mr.NextRawPart(); err != io.EOF {
+		t.Fatalf("masih ada bagian lagi: %v, %v", p, err)
+	}
+}
+
+// Struktur penuh: mixed [ alternative [ plain, related [ html, logo ] ], pdf ].
+// Dibaca balik dengan parser stdlib; semua isi harus utuh, termasuk biner dan huruf non-ASCII.
+func TestBangunPesan_HTMLInlineDanLampiran(t *testing.T) {
+	dari, _ := mail.ParseAddress("sistem@masjid.id")
+	ke, _ := mail.ParseAddress("ketua@masjid.id")
+	pdf := append([]byte("%PDF-1.4\n"), bytes.Repeat([]byte{0, 1, 2, 0xff, 0xfe}, 100)...) // biner, jauh > 76 kolom base64
+	logo := []byte("\xff\xd8\xff\xe0LOGO-PALSU")
+	p := domain.Pesan{
+		Subjek:   "Donasi baru",
+		Teks:     "versi teks é\nbaris dua",
+		HTML:     `<p style="color:#17473a">versi <b>html</b> é</p><img src="cid:logo-masjid">`,
+		Inline:   []domain.Berkas{{Nama: "logo.jpg", Tipe: "image/jpeg", CID: "logo-masjid", Isi: logo}},
+		Lampiran: []domain.Berkas{{Nama: "Kuitansi-KWT-2026-0007.pdf", Tipe: "application/pdf", Isi: pdf}},
+	}
+	raw, err := bangunPesan(*dari, *ke, p, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, baris := range strings.Split(string(raw), "\r\n") {
+		if len(baris) > 998 {
+			t.Fatalf("baris %d sepanjang %d (batas RFC 998)", i, len(baris))
+		}
+	}
+
+	m, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mt, params, err := mime.ParseMediaType(m.Header.Get("Content-Type"))
+	if err != nil || mt != "multipart/mixed" {
+		t.Fatalf("tipe teratas = %q (%v)", mt, err)
+	}
+	mixed := multipart.NewReader(m.Body, params["boundary"])
+
+	// 1. badan: alternative
+	badan, bp := bagianBerikut(t, mixed, "multipart/alternative")
+	alt := multipart.NewReader(badan, bp["boundary"])
+	teks, _ := bagianBerikut(t, alt, "text/plain")
+	if got := strings.ReplaceAll(string(bacaBagian(t, teks)), "\r\n", "\n"); got != p.Teks {
+		t.Errorf("teks = %q, mau %q", got, p.Teks)
+	}
+	rel, rp := bagianBerikut(t, alt, "multipart/related") // HTML terakhir = diutamakan klien
+	related := multipart.NewReader(rel, rp["boundary"])
+	html, _ := bagianBerikut(t, related, "text/html")
+	if got := string(bacaBagian(t, html)); got != p.HTML {
+		t.Errorf("html = %q, mau %q", got, p.HTML)
+	}
+	gambar, _ := bagianBerikut(t, related, "image/jpeg")
+	if gambar.Header.Get("Content-ID") != "<logo-masjid>" || !strings.HasPrefix(gambar.Header.Get("Content-Disposition"), "inline") {
+		t.Errorf("gambar inline: Content-ID=%q Disposition=%q", gambar.Header.Get("Content-ID"), gambar.Header.Get("Content-Disposition"))
+	}
+	if got := bacaBagian(t, gambar); !bytes.Equal(got, logo) {
+		t.Error("isi logo berubah setelah encode/decode")
+	}
+	tidakAdaLagi(t, related)
+	tidakAdaLagi(t, alt)
+
+	// 2. lampiran PDF
+	lamp, lp := bagianBerikut(t, mixed, "application/pdf")
+	if lp["name"] != "Kuitansi-KWT-2026-0007.pdf" {
+		t.Errorf("name = %q", lp["name"])
+	}
+	dispo, dp, err := mime.ParseMediaType(lamp.Header.Get("Content-Disposition"))
+	if err != nil || dispo != "attachment" || dp["filename"] != "Kuitansi-KWT-2026-0007.pdf" {
+		t.Errorf("Content-Disposition = %q %v (%v)", dispo, dp, err)
+	}
+	if got := bacaBagian(t, lamp); !bytes.Equal(got, pdf) {
+		t.Error("isi PDF berubah setelah encode/decode")
+	}
+	tidakAdaLagi(t, mixed)
+}
+
+// HTML tanpa lampiran = alternative di tingkat teratas (tanpa pembungkus mixed).
+func TestBangunPesan_HTMLTanpaLampiran(t *testing.T) {
+	dari, _ := mail.ParseAddress("sistem@masjid.id")
+	ke, _ := mail.ParseAddress("ketua@masjid.id")
+	raw, err := bangunPesan(*dari, *ke, domain.Pesan{Subjek: "x", Teks: "teks", HTML: "<p>html</p>"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, _ := mail.ReadMessage(bytes.NewReader(raw))
+	mt, params, _ := mime.ParseMediaType(m.Header.Get("Content-Type"))
+	if mt != "multipart/alternative" {
+		t.Fatalf("tipe teratas = %q", mt)
+	}
+	alt := multipart.NewReader(m.Body, params["boundary"])
+	// Isi dibaca sebelum pindah ke bagian berikutnya: multipart.Reader membuang sisa bagian lama.
+	teks, _ := bagianBerikut(t, alt, "text/plain")
+	if got := string(bacaBagian(t, teks)); got != "teks" {
+		t.Errorf("teks = %q", got)
+	}
+	html, _ := bagianBerikut(t, alt, "text/html")
+	if got := string(bacaBagian(t, html)); got != "<p>html</p>" {
+		t.Errorf("html = %q", got)
+	}
+	tidakAdaLagi(t, alt)
+}
+
+// Nama/tipe/CID berkas dari pemanggil tidak boleh menyisipkan header atau merusak struktur.
+func TestBangunPesan_BerkasTidakValidDitolak(t *testing.T) {
+	dari, _ := mail.ParseAddress("sistem@masjid.id")
+	ke, _ := mail.ParseAddress("ketua@masjid.id")
+	tests := []struct {
+		nama string
+		f    domain.Berkas
+	}{
+		{"nama disusupi header", domain.Berkas{Nama: "a.pdf\r\nBcc: x@y.z", Tipe: "application/pdf"}},
+		{"tipe disusupi header", domain.Berkas{Nama: "a.pdf", Tipe: "application/pdf\r\nBcc: x@y.z"}},
+		{"nama kosong", domain.Berkas{Nama: "", Tipe: "application/pdf"}},
+		{"tipe kosong", domain.Berkas{Nama: "a.pdf"}},
+		{"CID memuat kurung sudut", domain.Berkas{Nama: "a.jpg", Tipe: "image/jpeg", CID: "x>\r\nBcc: y"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.nama, func(t *testing.T) {
+			if _, err := bangunPesan(*dari, *ke, domain.Pesan{Subjek: "x", Teks: "y", Lampiran: []domain.Berkas{tt.f}}, time.Now()); err == nil {
+				t.Error("harus galat")
+			}
+		})
 	}
 }
 
@@ -165,7 +333,7 @@ func (s *smtpPalsu) email(t *testing.T) *Email {
 
 func TestKirim_PercakapanSMTP(t *testing.T) {
 	s := jalankanSMTPPalsu(t, false)
-	if err := s.email(t).Kirim(context.Background(), "Donasi baru", "Isi pesan"); err != nil {
+	if err := s.email(t).Kirim(context.Background(), domain.Pesan{Subjek: "Donasi baru", Teks: "Isi pesan"}); err != nil {
 		t.Fatalf("Kirim: %v", err)
 	}
 	select {
@@ -187,7 +355,7 @@ func TestKirim_ServerDiamKenaTenggat(t *testing.T) {
 	ctx, batal := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer batal()
 	mulai := time.Now()
-	if err := s.email(t).Kirim(ctx, "x", "y"); err == nil {
+	if err := s.email(t).Kirim(ctx, domain.Pesan{Subjek: "x", Teks: "y"}); err == nil {
 		t.Fatal("Kirim ke server diam harus galat")
 	}
 	if d := time.Since(mulai); d > 1500*time.Millisecond {

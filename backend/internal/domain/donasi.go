@@ -107,12 +107,31 @@ type HasilNotifikasi struct {
 	Metode  string       // payment_type dari gateway
 }
 
-// Pemberitahu mengirim pesan teks kepada Ketua (saat ini lewat email, lihat
+// Berkas = satu lampiran pesan. CID terisi = gambar inline yang dirujuk HTML
+// lewat src="cid:<CID>"; kosong = lampiran biasa yang diunduh penerima.
+type Berkas struct {
+	Nama string // nama berkas, tanpa jalur
+	Tipe string // media type, mis. "application/pdf"
+	CID  string
+	Isi  []byte
+}
+
+// Pesan = isi satu pemberitahuan. Teks wajib (cadangan bagi klien yang tidak
+// menampilkan HTML); HTML boleh kosong. Pemanggil yang memastikan isinya aman:
+// HTML sudah di-escape, dan tidak memuat rahasia (kode kuitansi publik, No. HP penuh).
+type Pesan struct {
+	Subjek   string
+	Teks     string
+	HTML     string
+	Inline   []Berkas // gambar yang dipakai HTML
+	Lampiran []Berkas
+}
+
+// Pemberitahu mengirim pesan kepada Ketua (saat ini lewat email, lihat
 // internal/notif). Penerimanya ditetapkan oleh implementasi, bukan pemanggil,
-// jadi service tidak perlu tahu alamat email. Isi pesan tidak boleh memuat
-// rahasia (kode kuitansi publik, No. HP penuh).
+// jadi service tidak perlu tahu alamat email.
 type Pemberitahu interface {
-	Kirim(ctx context.Context, subjek, isi string) error
+	Kirim(ctx context.Context, p Pesan) error
 }
 
 // GerbangBayar memisahkan aturan donasi dari penyedia pembayaran: Midtrans

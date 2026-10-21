@@ -57,6 +57,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       NOTIF_EMAIL_KETUA: ${NOTIF_EMAIL_KETUA:-}
+      # Kop email dan PDF kuitansi: identitas masjid yang sama dengan frontend (satu sumber, .env).
+      PUBLIC_MASJID_NAMA: ${PUBLIC_MASJID_NAMA:-Masjid Jami Al-Barokah}
+      PUBLIC_MASJID_ALAMAT: ${PUBLIC_MASJID_ALAMAT:-}
+      PUBLIC_MASJID_KONTAK: ${PUBLIC_MASJID_KONTAK:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz >/dev/null || exit 1"]
       interval: 10s

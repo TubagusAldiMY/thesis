@@ -17,6 +17,7 @@ import (
 
 	"spkzakat/internal/crypto"
 	"spkzakat/internal/domain"
+	"spkzakat/internal/kuitansi"
 	"spkzakat/internal/store"
 )
 
@@ -42,6 +43,8 @@ type Service struct {
 	// (pemberitahuan.go). latar menunggu pengiriman yang sedang berjalan.
 	pemberi domain.Pemberitahu
 	latar   sync.WaitGroup
+	// masjid = kop email dan PDF kuitansi (AturMasjid).
+	masjid kuitansi.Identitas
 	// sekarang = sumber waktu; diganti di test supaya nomor kuitansi bisa diuji.
 	sekarang func() time.Time
 }
