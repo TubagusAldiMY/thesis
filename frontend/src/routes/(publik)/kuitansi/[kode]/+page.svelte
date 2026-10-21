@@ -38,7 +38,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="baris-aksi ujung tanpa-cetak">
+	<div class="baris-aksi ujung tanpa-cetak aksi">
 		<button class="tombol" type="button" onclick={bagikan}>Bagikan</button>
 		<button class="tombol utama" type="button" onclick={() => window.print()}>Cetak / Simpan PDF</button>
 	</div>
@@ -112,6 +112,15 @@
 	}
 	.kanan {
 		text-align: right;
+		/* Kop beralamat panjang menyempitkan kolom ini sampai "No." dan nomornya
+		   terpisah di dua baris; kolom nomor tidak boleh menyusut. */
+		flex-shrink: 0;
+	}
+	.kanan p {
+		white-space: nowrap;
+	}
+	.aksi {
+		margin-bottom: 0.75rem; /* tombol tidak menempel ke tepi kartu */
 	}
 	.isi {
 		display: grid;
