@@ -35,6 +35,7 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `backend/internal/domain/` | Tipe inti + error (`ErrNotFound`, `ErrConflict`, `ConflictError`, `ValidationError`), `User`, `Audit`, `Persetujuan`, `Penyaluran`. Tidak mengimpor paket lain |
 | `backend/internal/crypto/` | Argon2id, AES-256-GCM (NIK/HP), HMAC-SHA256 |
 | `backend/internal/payment/` | Penyedia pembayaran donasi web (`domain.GerbangBayar`): `Midtrans` (Snap + verifikasi tanda tangan notifikasi SHA512) dan `Tiruan` (palsu untuk dev/demo/test, menolak menyala di production). Hanya mengimpor `domain` |
+| `backend/internal/notif/` | Pengirim email pemberitahuan (`domain.Pemberitahu`) lewat SMTP stdlib `net/smtp`: STARTTLS/TLS langsung, tenggat per pengiriman, subjek RFC 2047 dan isi quoted-printable (aman dari header injection). Tidak mengimpor paket project lain |
 | `backend/internal/store/` | Akses MySQL (SQL berparameter), satu tipe `Store` untuk koneksi & transaksi |
 | `backend/internal/service/` | Aturan bisnis & transaksi; tidak tahu HTTP |
 | `backend/internal/httpapi/` | Router (`net/http.ServeMux` Go 1.22+), middleware, handler, pemetaan error → status |
@@ -56,6 +57,7 @@ cmd/server ──► httpapi ──► service ──► store ──► domain
                                │  └──► crypto, aras (murni)
 cmd/useradmin ──► service      └──► domain
 cmd/server ──► payment ──► domain   (gateway dipasang ke service lewat AturGerbang; httpapi hanya mengenal payment.Tiruan untuk simulasi dev)
+cmd/server ──► notif               (pengirim email dipasang lewat AturPemberitahu; service hanya mengenal interface domain.Pemberitahu)
 cmd/migrate ──► migrate ──► migrations (embed)
 ```
 `domain`, `aras`, `crypto` tidak mengimpor paket project lain. `service` tidak tahu HTTP; `httpapi` tidak berisi aturan bisnis.
@@ -65,9 +67,9 @@ cmd/migrate ──► migrate ──► migrations (embed)
 1. `muatConfig()` membaca `DATABASE_URL`, `NIK_ENCRYPTION_KEY`, `NIK_HMAC_KEY`, `ADDR` (bawaan `127.0.0.1:8090`), `COOKIE_SECURE`, `LOG_LEVEL`. Rahasia tidak pernah dilog.
 2. Logger `slog` JSON ke stdout dijadikan default.
 3. `store.Open` (pool 25/5, UTC, `multiStatements` mati, ping).
-4. `crypto.NewCipher` + `crypto.NewHasher` → `service.New(store, cipher, hasher)` (sekaligus membuat pembatas login di memori).
+4. `crypto.NewCipher` + `crypto.NewHasher` → `service.New(store, cipher, hasher)` (sekaligus membuat pembatas login di memori). Opsional: `pasangGerbang` (bila `PAYMENT_PROVIDER` diisi) dan `pasangPemberitahu` (bila `SMTP_HOST` + `NOTIF_EMAIL_KETUA` diisi; alamat salah format = server berhenti saat start).
 5. `httpapi.New(svc, log, cookieSecure, st.Ping)` → `http.Server` dengan timeout baca/tulis.
-6. `ListenAndServe` di goroutine; SIGINT/SIGTERM → `Shutdown` maks. 30 detik.
+6. `ListenAndServe` di goroutine; SIGINT/SIGTERM → `Shutdown` maks. 30 detik, lalu `svc.TungguPemberitahuan()` menyelesaikan email yang sedang dikirim.
 
 ## Alur data satu permintaan
 ```
@@ -94,6 +96,7 @@ Browser ─► SvelteKit hooks.server.ts (request_id, sesi, header keamanan)
 | `keputusan.go` | `AmbilDetailPeriode`, `Putuskan`, `BukaKembali`, `CatatPenyaluran`, `DaftarPenyaluran`, `TutupPeriode` | Keputusan hanya saat dihitung, catatan wajib bila tolak, satu run sekali diputuskan; penyaluran hanya saat disetujui, hanya usulan run terkini, sekali per penerima, Σ ≤ dana; tutup bila semua usulan tercatat |
 | `laporan.go` | `AmbilDashboard` (+ `ambilKeuangan`), `AmbilRingkasanPublik` (agregat tanpa data pribadi untuk landing), `AmbilLaporan`, `Laporan.TulisCSV` | Stepper 1–5; ringkasan keuangan Beranda: zakat dan infak dibukukan **terpisah** (saldo = diterima − tersalur per jenis, bisa negatif), grafik 12 bulan kalender WIB; laporan memakai potret bobot run; CSV dengan pencegahan formula injection |
 | `donasi.go` | `BuatDonasiWeb`, `TerimaNotifikasi`, `CatatDonasiManual`, `DaftarDonasi`, `AmbilDonasi`, `BatalkanDonasi`, `RingkasDonasi`, `TandaiDonasiDilihat`, `AmbilDonasiPublik`, `AturGerbang` | Donasi web jadi *diterima* **hanya** dari notifikasi gateway yang tanda tangannya sah dan jumlahnya cocok (baris dikunci `FOR UPDATE`, idempoten: notifikasi ganda/terlambat diabaikan). Nomor kuitansi `KWT/<tahun WIB>/<urut>` tanpa celah (penghitung `donasi_urut` di transaksi yang sama). Kuitansi tidak dihapus, hanya *dibatalkan*. No. HP terenkripsi; penuh hanya untuk Admin pada detail. Jumlah Rp 10.000–100.000.000 |
+| `pemberitahuan.go` | `AturPemberitahu`, `TungguPemberitahuan`, `beritahuDonasi`, `pesanDonasi` | Email ke Ketua saat donasi online baru diterima. Dipanggil `TerimaNotifikasi` **setelah commit** (bukan di dalam transaksi), kirim-lalu-lupa di goroutine dengan batas 30 detik: SMTP mati tidak menggagalkan donasi. Isi tanpa No. HP/kode kuitansi publik; nama dipadatkan satu baris; tautan ke `/penerimaan/<id>` (wajib login). Tanpa antrean/retry (lihat komentar `ponytail:`) |
 
 Setiap transisi status periode memakai `GetPeriodeForUpdate` (kunci baris) + `SetStatusPeriode` (compare-and-set), sehingga dua pengguna yang menekan tombol bersamaan tidak bisa sama-sama menang.
 
@@ -150,7 +153,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `GET /publik/ringkasan` | **publik**, 120/menit/IP | – | angka transparansi landing: hanya enam agregat (`zakat_diterima`, `infak_diterima`, `total_diterima`, `total_tersalur`, `jumlah_donasi`, `penerima_manfaat`); donasi `diterima` saja; tanpa nama/HP. Diuji: semua nilai angka | 200 |
 | `POST /publik/donasi` | **publik**, 5/10 menit/IP | nama, jenis, jumlah, HP opsional, keterangan ≤ 200 | INSERT menunggu + buat transaksi di gateway → `bayar_url` | 201 `{kode,status,bayar_url}` → 422, 429, 502, 503 |
 | `GET /publik/donasi/{kode}` | **publik**, 120/menit/IP | kode = 32 heksadesimal (selain itu 404) | status + data kuitansi milik pemegang kode | 200 → 404 |
-| `POST /publik/midtrans/notifikasi` | **publik**, dijaga tanda tangan | body ≤ 64 KiB; SHA512(order_id+status_code+gross_amount+ServerKey) sah; jumlah = donasi | transaksi `FOR UPDATE`: menunggu → diterima/gagal/kedaluwarsa, terbit nomor kuitansi, audit `DONASI_TERIMA` | 200 → 401 (tanda tangan), 404, 409 (jumlah beda), 503 |
+| `POST /publik/midtrans/notifikasi` | **publik**, dijaga tanda tangan | body ≤ 64 KiB; SHA512(order_id+status_code+gross_amount+ServerKey) sah; jumlah = donasi | transaksi `FOR UPDATE`: menunggu → diterima/gagal/kedaluwarsa, terbit nomor kuitansi, audit `DONASI_TERIMA`; **setelah commit**, email "donasi baru" ke Ketua di goroutine (`service/pemberitahuan.go`), hanya pada perubahan menunggu → diterima, gagal kirim tidak membatalkan apa pun | 200 → 401 (tanda tangan), 404, 409 (jumlah beda), 503 |
 | `POST /publik/tiruan/{kode}/bayar` | publik, **hanya bila `PAYMENT_PROVIDER=tiruan`** | – | memicu notifikasi settlement tiruan lewat jalur yang sama | 200 → 404 bila rute tidak terpasang |
 
 ## Rute frontend

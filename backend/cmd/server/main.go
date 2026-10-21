@@ -19,6 +19,7 @@ import (
 
 	"spkzakat/internal/crypto"
 	"spkzakat/internal/httpapi"
+	"spkzakat/internal/notif"
 	"spkzakat/internal/payment"
 	"spkzakat/internal/service"
 	"spkzakat/internal/store"
@@ -39,6 +40,11 @@ type config struct {
 	midtransKey string
 	midtransURL string // kosong = sandbox
 	webOrigin   string // alamat publik frontend, tujuan pengalihan setelah bayar
+
+	// Email ke Ketua tiap ada donasi online diterima (opsional). smtpHost dan
+	// emailKetua kosong semua = tidak ada pemberitahuan.
+	smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom string
+	emailKetua                                       string
 }
 
 func muatConfig() (config, error) {
@@ -81,7 +87,35 @@ func muatConfig() (config, error) {
 	default:
 		return c, errors.New("PAYMENT_PROVIDER harus kosong, midtrans, atau tiruan")
 	}
+
+	c.smtpHost, c.smtpPort = os.Getenv("SMTP_HOST"), os.Getenv("SMTP_PORT")
+	c.smtpUser, c.smtpPass, c.smtpFrom = os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASSWORD"), os.Getenv("SMTP_FROM")
+	c.emailKetua = os.Getenv("NOTIF_EMAIL_KETUA")
+	if (c.smtpHost == "") != (c.emailKetua == "") {
+		return c, errors.New("SMTP_HOST dan NOTIF_EMAIL_KETUA harus diisi bersamaan (keduanya kosong = tanpa pemberitahuan email)")
+	}
 	return c, nil
+}
+
+// pasangPemberitahu memasang pengirim email "donasi baru" ke Ketua bila SMTP
+// dikonfigurasi. Alamat yang salah format menghentikan server saat start
+// (lebih baik gagal di awal daripada diam-diam tidak pernah terkirim).
+func pasangPemberitahu(cfg config, svc *service.Service, log *slog.Logger) error {
+	if cfg.smtpHost == "" {
+		log.Info("pemberitahuan email nonaktif (SMTP_HOST kosong)")
+		return nil
+	}
+	dari := cfg.smtpFrom
+	if dari == "" {
+		dari = cfg.smtpUser // lazim: login SMTP = alamat pengirim (mis. Gmail)
+	}
+	e, err := notif.NewEmail(cfg.smtpHost, cfg.smtpPort, cfg.smtpUser, cfg.smtpPass, dari, cfg.emailKetua)
+	if err != nil {
+		return err
+	}
+	svc.AturPemberitahu(e, cfg.webOrigin)
+	log.Info("pemberitahuan email donasi aktif", "smtp_host", cfg.smtpHost) // alamat email tidak dilog (data pribadi)
+	return nil
 }
 
 // pasangGerbang memasang payment gateway sesuai konfigurasi dan mengembalikan
@@ -141,6 +175,10 @@ func main() {
 		log.Error("payment gateway", "error", err.Error())
 		os.Exit(1)
 	}
+	if err := pasangPemberitahu(cfg, svc, log); err != nil {
+		log.Error("pemberitahuan email", "error", err.Error())
+		os.Exit(1)
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.addr,
@@ -168,5 +206,6 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("shutdown paksa", "error", err.Error())
 	}
+	svc.TungguPemberitahuan() // email yang sedang dikirim diselesaikan dulu (maks 30 detik per email)
 	log.Info("server berhenti")
 }

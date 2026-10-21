@@ -107,6 +107,14 @@ type HasilNotifikasi struct {
 	Metode  string       // payment_type dari gateway
 }
 
+// Pemberitahu mengirim pesan teks kepada Ketua (saat ini lewat email, lihat
+// internal/notif). Penerimanya ditetapkan oleh implementasi, bukan pemanggil,
+// jadi service tidak perlu tahu alamat email. Isi pesan tidak boleh memuat
+// rahasia (kode kuitansi publik, No. HP penuh).
+type Pemberitahu interface {
+	Kirim(ctx context.Context, subjek, isi string) error
+}
+
 // GerbangBayar memisahkan aturan donasi dari penyedia pembayaran: Midtrans
 // untuk production/sandbox, penyedia tiruan untuk dev dan test.
 type GerbangBayar interface {

@@ -58,6 +58,8 @@ Backend memakai `App/.env` (contoh: [.env.example](.env.example)); frontend mema
 | `MIDTRANS_SNAP_URL` | Go | Alamat Snap; kosong = sandbox |
 | `PUBLIC_MIDTRANS_CLIENT_KEY` | SvelteKit | Client Key Midtrans (bukan rahasia). Diisi = pembayaran tampil sebagai popup Snap di `/donasi/lanjut`; kosong = muzaki dialihkan ke halaman bayar Midtrans. Untuk `npm run dev` isi juga di `frontend/.env` |
 | `WEB_ORIGIN` | Go | Alamat publik frontend untuk pengalihan setelah bayar; wajib bila `PAYMENT_PROVIDER` aktif (di Docker sama dengan `WEB_ORIGIN` frontend) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Go | Server SMTP untuk email "donasi baru" ke Ketua (port bawaan `587`/STARTTLS, `465` = TLS langsung; `SMTP_FROM` kosong = `SMTP_USER`). `SMTP_PASSWORD` **rahasia**. Lihat bagian "Email pemberitahuan ke Ketua" |
+| `NOTIF_EMAIL_KETUA` | Go | Alamat email Ketua penerima pemberitahuan. Wajib diisi bersama `SMTP_HOST` (keduanya kosong = tanpa email) |
 | `DEMO_PASSWORD` | skrip | Password akun demo lokal untuk `scripts/seed-demo.sh` |
 | `API_URL` | SvelteKit | Alamat Go API (bawaan `http://127.0.0.1:8090`) |
 | `PUBLIC_MASJID_NAMA`, `PUBLIC_MASJID_ALAMAT`, `PUBLIC_MASJID_KONTAK` | SvelteKit | Identitas masjid di sidebar, landing, dan kop laporan. Alamat/kontak yang diisi tampil di footer landing publik (blok Kontak) serta kop laporan dan kuitansi. Bawaannya **kosong** (tidak ada data contoh): yang kosong tidak ditampilkan. Nilai dengan spasi/koma diberi tanda kutip tunggal di `.env` |
@@ -218,6 +220,25 @@ Halaman publik **`/donasi`** (tanpa login) menerima zakat/infak dari muzaki lewa
 
 **Alur & keamanan**: donasi tersimpan berstatus *menunggu* → muzaki membayar lewat popup Snap di atas halaman masjid (bila Client Key diisi) atau di halaman bayar Midtrans → hasil callback popup tidak dipercaya, hanya membawa muzaki ke halaman status → Midtrans memanggil webhook dengan tanda tangan SHA512 → Go memverifikasi tanda tangan **dan** kecocokan jumlah, lalu mengubah status menjadi *diterima* dan menerbitkan nomor kuitansi `KWT/<tahun>/<urut>`. Status tidak pernah berubah hanya karena muzaki kembali ke halaman "selesai". Kuitansi dibuka lewat tautan berkode rahasia 128 bit (`/kuitansi/<kode>`); kode itu tidak dicatat di log. Pembuatan donasi publik dibatasi 5 permintaan per 10 menit per IP.
 
+## Email pemberitahuan ke Ketua (opsional)
+Setiap donasi **online** yang baru berubah menjadi *diterima* mengirim satu email ke Ketua: nomor kuitansi, nama donatur, jenis, jumlah, waktu, dan tautan ke halaman detail pengurus (`/penerimaan/<id>`, wajib login). Isi email **tidak** memuat No. HP, kode rahasia kuitansi, maupun keterangan bebas. Donasi yang dicatat petugas, masih menunggu, gagal, atau kedaluwarsa tidak mengirim email, dan notifikasi ganda dari gateway tidak menghasilkan email ganda.
+
+1. `.env` (contoh lengkap di [.env.example](.env.example)):
+
+   ```bash
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=alamat.pengirim@gmail.com
+   SMTP_PASSWORD=app-password-16-karakter
+   NOTIF_EMAIL_KETUA=ketua@contoh.id
+   ```
+
+   Gmail wajib memakai **App password** (Akun Google → Keamanan → Verifikasi 2 langkah → Sandi aplikasi), bukan password login. Penyedia lain: isi host/port/akun dari dokumentasi mereka (port `587` = STARTTLS, `465` = TLS langsung). `SMTP_HOST` dan `NOTIF_EMAIL_KETUA` harus diisi bersamaan, kalau tidak server menolak start.
+2. Terapkan ulang: `go run ./cmd/server` (setelah memuat `.env`), atau untuk Docker `docker compose --env-file .env up -d api`. Log awal menampilkan `pemberitahuan email donasi aktif`.
+3. Coba tanpa akun SMTP sungguhan: jalankan penampung email lokal (mis. Mailpit: `docker run --rm -p 8025:8025 -p 1025:1025 axllent/mailpit`), isi `SMTP_HOST=127.0.0.1`, `SMTP_PORT=1025`, `SMTP_FROM=sistem@masjid.test`, `NOTIF_EMAIL_KETUA=ketua@masjid.test` tanpa `SMTP_USER`, lalu bayar donasi lewat `PAYMENT_PROVIDER=tiruan`. Emailnya muncul di `http://127.0.0.1:8025`. Cara ini untuk Go yang dijalankan dengan `go run`; container `api` tidak bisa memakai `127.0.0.1` milik host.
+
+Pengiriman berjalan di latar belakang dengan batas 30 detik: SMTP yang lambat atau mati **tidak** menggagalkan donasi maupun memperlambat balasan ke gateway. Kegagalan hanya muncul di log Go (`pemberitahuan donasi ke Ketua gagal terkirim`, tanpa alamat email) dan tidak dicoba ulang; donasinya tetap terlihat di menu Penerimaan.
+
 ## Production
 Ringkas (satu server masjid / VPS kecil):
 
@@ -241,6 +262,7 @@ Ringkas (satu server masjid / VPS kecil):
 8. **Health check**: `curl -s http://127.0.0.1:8090/healthz` → `{"ok":true}` (503 bila MySQL tidak menjawab).
 9. **Log**: Go dan SvelteKit menulis JSON ke stdout (field `request_id` sama di keduanya). Kumpulkan dengan journald/Alloy → Loki bila perlu.
 10. **Donasi online** (bila dipakai): `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY` dari secret manager, `MIDTRANS_SNAP_URL` ke alamat Snap **production**, `WEB_ORIGIN=ORIGIN`. Jangan pernah `PAYMENT_PROVIDER=tiruan` (server menolaknya bila `COOKIE_SECURE=true`). Daftarkan `https://alamat-publik/midtrans/notifikasi` sebagai Notification URL di dashboard Midtrans **production**, dan pastikan reverse proxy meneruskan path itu ke frontend. Syarat akun production (dokumen lembaga, kategori donasi/zakat) ditentukan Midtrans; urus langsung ke penyedia sebelum go-live.
+11. **Email ke Ketua** (bila dipakai): isi `SMTP_*` dan `NOTIF_EMAIL_KETUA` (lihat bagian "Email pemberitahuan ke Ketua"). `SMTP_PASSWORD` dari secret manager / file env ber-izin 600, jangan di-commit. Pastikan server bisa keluar ke host SMTP di port 587/465; tanpa TLS ke server non-lokal, login SMTP ditolak otomatis supaya password tidak terkirim polos.
 
 ## Troubleshooting
 | Gejala | Penyebab & solusi |
@@ -270,3 +292,6 @@ Ringkas (satu server masjid / VPS kecil):
 | Donasi tetap "menunggu" setelah dibayar di Midtrans | Notifikasi belum sampai. Cek Notification URL di dashboard = `https://alamat-publik/midtrans/notifikasi`, alamat itu terjangkau dari internet, dan log Go: `notifikasi gateway ditolak` (tanda tangan/Server Key salah) atau status 409 (jumlah tidak cocok). |
 | Muzaki melihat "Layanan pembayaran sedang bermasalah" | Go tidak bisa membuat transaksi di Midtrans (Server Key salah, jaringan, atau `MIDTRANS_SNAP_URL` keliru). Lihat log Go `payment gateway bermasalah`. |
 | "Terlalu banyak permintaan" di form donasi | Batas 5 donasi baru per 10 menit per IP. Tunggu, atau restart Go API (penghitung di memori). |
+| Server: `SMTP_HOST dan NOTIF_EMAIL_KETUA harus diisi bersamaan` | Hanya salah satu yang terisi. Isi keduanya, atau kosongkan keduanya. |
+| Server: `pemberitahuan email: notif: alamat penerima/pengirim: bukan alamat email yang valid` | `NOTIF_EMAIL_KETUA` atau `SMTP_FROM`/`SMTP_USER` bukan satu alamat email yang benar. Bila `SMTP_FROM` kosong, `SMTP_USER` dipakai sebagai pengirim dan harus berupa alamat email. |
+| Donasi dibayar tapi email tidak datang | Cek log Go: tidak ada baris `pemberitahuan donasi ke Ketua` = fitur nonaktif (`SMTP_HOST` kosong) atau donasinya bukan donasi online. `… gagal terkirim` + `login SMTP`: akun/App password salah, atau server tidak menawarkan STARTTLS (login ditolak demi keamanan). `… sambung ke SMTP … i/o timeout`: host/port salah atau diblokir firewall (coba port 465 bila 587 diblokir). Cek juga folder Spam. |

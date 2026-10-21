@@ -296,7 +296,8 @@ func (s *Service) BuatDonasiWeb(ctx context.Context, in DonasiWebInput) (DonasiP
 // cocokkan jumlah, lalu ubah status dalam satu transaksi dengan baris donasi
 // terkunci. Idempoten: gateway boleh mengirim notifikasi yang sama berkali-kali,
 // dan notifikasi terlambat (mis. expire setelah settlement) tidak menimpa
-// status akhir. Kuitansi hanya terbit dari status menunggu → diterima.
+// status akhir. Kuitansi hanya terbit dari status menunggu → diterima, dan
+// hanya perubahan itu yang memicu email ke Ketua (pemberitahuan.go).
 func (s *Service) TerimaNotifikasi(ctx context.Context, body []byte) (HasilNotifikasi, error) {
 	if s.gerbang == nil {
 		return HasilNotifikasi{}, domain.ErrNonaktif
@@ -307,6 +308,7 @@ func (s *Service) TerimaNotifikasi(ctx context.Context, body []byte) (HasilNotif
 	}
 
 	var hasil HasilNotifikasi
+	var baruDiterima *domain.Donasi // terisi hanya bila notifikasi ini yang mengubahnya jadi diterima
 	err = s.st.WithTx(ctx, func(tx *store.Store) error {
 		d, err := tx.GetDonasiForUpdate(ctx, n.OrderID)
 		if err != nil {
@@ -351,17 +353,28 @@ func (s *Service) TerimaNotifikasi(ctx context.Context, body []byte) (HasilNotif
 			return err
 		}
 		hasil.Status, hasil.Berubah = d.Status, true
+		if d.Status == domain.DonasiDiterima {
+			salinan := d
+			baruDiterima = &salinan
+		}
 		return nil
 	})
 	if err != nil {
 		return HasilNotifikasi{}, fmt.Errorf("service.TerimaNotifikasi: %w", err)
+	}
+	// Setelah commit, bukan di dalam transaksi: email tidak boleh terkirim untuk
+	// donasi yang akhirnya batal tersimpan, dan SMTP tidak boleh menahan kunci baris.
+	// Notifikasi ulang dari gateway tidak sampai sini (Berubah=false) → tidak ada email ganda.
+	if baruDiterima != nil {
+		s.beritahuDonasi(ctx, *baruDiterima)
 	}
 	return hasil, nil
 }
 
 // CatatDonasiManual dipakai petugas untuk penerimaan langsung di masjid
 // (tunai atau transfer). Langsung berstatus diterima dan mendapat kuitansi.
-// Tidak memicu notifikasi: yang mencatat sudah pengurus itu sendiri.
+// Tidak memicu penanda "baru" maupun email ke Ketua: yang mencatat sudah
+// pengurus itu sendiri, dan tanggal bisa mundur (mengisi dari buku kas lama).
 func (s *Service) CatatDonasiManual(ctx context.Context, petugasID string, in DonasiManualInput) (DonasiView, error) {
 	hp := normalHP(in.NoHP)
 	g := galat{}

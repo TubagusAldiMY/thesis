@@ -50,6 +50,13 @@ services:
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
       MIDTRANS_SNAP_URL: ${MIDTRANS_SNAP_URL:-}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3101}
+      # Email ke Ketua saat donasi online diterima. SMTP_HOST kosong = nonaktif (lihat .env.example).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      NOTIF_EMAIL_KETUA: ${NOTIF_EMAIL_KETUA:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/healthz >/dev/null || exit 1"]
       interval: 10s
