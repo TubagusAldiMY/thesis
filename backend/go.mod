@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/jmoiron/sqlx v1.4.0
 	golang.org/x/crypto v0.40.0
