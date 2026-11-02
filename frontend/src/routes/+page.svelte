@@ -8,6 +8,7 @@
 <script lang="ts">
 	import IkonMasjid from '$lib/components/IkonMasjid.svelte';
 	import JadwalSalat from '$lib/components/JadwalSalat.svelte';
+	import KartuKegiatan from '$lib/components/KartuKegiatan.svelte';
 	import KartuProgram from '$lib/components/KartuProgram.svelte';
 	import { angka, rupiah } from '$lib/format';
 	import { masjid } from '$lib/masjid';
@@ -51,6 +52,7 @@
 				<a href="#jadwal">Jadwal salat</a>
 				<a href="#donasi">Donasi</a>
 				<a href="/program">Program</a>
+				<a href="/kegiatan">Kegiatan</a>
 				<a href="#penyaluran">Penyaluran</a>
 			</nav>
 			<div class="aksi-pil">
@@ -129,6 +131,14 @@
 	</div>
 
 	<main>
+		{#if data.pengumuman.length > 0}
+			<section class="lebar pengumuman-landing" aria-label="Pengumuman">
+				{#each data.pengumuman as p (p.id)}
+					<div class="pengumuman" role="note"><strong>{p.judul}</strong><span>{p.isi}</span></div>
+				{/each}
+			</section>
+		{/if}
+
 		<section class="lebar bagian dua-kolom" id="donasi">
 			<div class="kolom-teks">
 				<h2>Tunaikan zakat dan infak</h2>
@@ -162,6 +172,36 @@
 				<div class="grid-program">
 					{#each data.program as p (p.id)}<KartuProgram program={p} />{/each}
 				</div>
+			</section>
+		{/if}
+
+		{#if data.kegiatan.length > 0 || data.jadwal.length > 0}
+			<section class="lebar bagian program" id="kegiatan">
+				<div class="kepala-program">
+					<div>
+						<h2>Kegiatan masjid</h2>
+						<p class="redup">Kegiatan keagamaan dan jadwal kajian di {masjid.nama}. Semua jamaah dipersilakan hadir.</p>
+					</div>
+					<a class="tombol" href="/kegiatan">Lihat semua kegiatan →</a>
+				</div>
+				{#if data.kegiatan.length > 0}
+					<div class="grid-program">
+						{#each data.kegiatan as k (k.id)}<KartuKegiatan kegiatan={k} />{/each}
+					</div>
+				{/if}
+				{#if data.jadwal.length > 0}
+					<div class="jadwal-landing">
+						<h3>Jadwal rutin</h3>
+						<ul>
+							{#each data.jadwal as j (j.id)}
+								<li>
+									<span class="hari-jam"><strong>{j.hari_label}</strong> <span class="angka">{j.jam.replace(':', '.')}</span></span>
+									<span>{j.judul}{#if j.pemateri} <span class="redup">· {j.pemateri}</span>{/if}</span>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -507,6 +547,45 @@
 	.program {
 		display: grid;
 		gap: 1.5rem;
+	}
+	.pengumuman-landing {
+		display: grid;
+		gap: 0.6rem;
+		padding-top: 1.5rem;
+	}
+	.pengumuman {
+		display: grid;
+		gap: 0.2rem;
+		padding: 0.9rem 1.1rem;
+		border-radius: 14px;
+		border: 1px solid var(--kuning-garis);
+		background: var(--kuning);
+		color: var(--kuning-teks);
+	}
+	.jadwal-landing {
+		display: grid;
+		gap: 0.6rem;
+		padding: 1.1rem 1.25rem;
+		background: var(--kartu);
+		border: 1px solid var(--garis);
+		border-radius: 16px;
+	}
+	.jadwal-landing ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 0.6rem 1.5rem;
+	}
+	.jadwal-landing li {
+		display: grid;
+		grid-template-columns: 8.5rem 1fr;
+		gap: 0.5rem;
+		font-size: 0.92rem;
+	}
+	.hari-jam strong {
+		color: var(--hijau);
 	}
 	.kepala-program {
 		display: flex;

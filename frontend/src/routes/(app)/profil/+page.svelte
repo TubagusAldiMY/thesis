@@ -20,7 +20,7 @@
 			<dt>Username</dt><dd>{data.user.username}</dd>
 			<dt>Peran</dt><dd>{data.user.role === 'admin' ? 'Admin / Petugas Amil' : 'Ketua DKM'}</dd>
 		</dl>
-		<p class="redup kecil">Nama dan peran diatur oleh pengelola server (akun dibuat lewat CLI).</p>
+		<p class="redup kecil">Nama dan peran diatur oleh Ketua lewat menu Pengguna.</p>
 	</section>
 
 	<form

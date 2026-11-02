@@ -102,6 +102,34 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 
 	mux.Handle("GET /api/audit", a.peran(a.audit, semua...))
 
+	// CMS konten kegiatan keagamaan — Admin dan Ketua sama-sama boleh mengelola.
+	// Rute literal ("kategori") menang atas {id} karena lebih spesifik.
+	mux.Handle("GET /api/kegiatan", a.peran(a.daftarKegiatan, semua...))
+	mux.Handle("POST /api/kegiatan", a.peran(a.buatKegiatan, semua...))
+	mux.Handle("GET /api/kegiatan/kategori", a.peran(a.kategoriKegiatan, semua...))
+	mux.Handle("GET /api/kegiatan/{id}", a.peran(a.ambilKegiatan, semua...))
+	mux.Handle("PUT /api/kegiatan/{id}", a.peran(a.ubahKegiatan, semua...))
+	mux.Handle("DELETE /api/kegiatan/{id}", a.peran(a.hapusKegiatan, semua...))
+	mux.Handle("GET /api/kegiatan/{id}/gambar", a.peran(a.gambarKegiatan, semua...))
+	mux.Handle("PUT /api/kegiatan/{id}/gambar", a.peran(a.unggahGambarKegiatan, semua...))
+	mux.Handle("GET /api/jadwal-rutin", a.peran(a.daftarJadwal, semua...))
+	mux.Handle("POST /api/jadwal-rutin", a.peran(a.buatJadwal, semua...))
+	mux.Handle("PUT /api/jadwal-rutin/{id}", a.peran(a.ubahJadwal, semua...))
+	mux.Handle("DELETE /api/jadwal-rutin/{id}", a.peran(a.hapusJadwal, semua...))
+	mux.Handle("GET /api/pengumuman", a.peran(a.daftarPengumuman, semua...))
+	mux.Handle("POST /api/pengumuman", a.peran(a.buatPengumuman, semua...))
+	mux.Handle("PUT /api/pengumuman/{id}", a.peran(a.ubahPengumuman, semua...))
+	mux.Handle("DELETE /api/pengumuman/{id}", a.peran(a.hapusPengumuman, semua...))
+
+	// Kelola pengguna — khusus Ketua (Yayasan/DKM). Akun tidak dihapus, hanya dinonaktifkan.
+	mux.Handle("GET /api/pengguna", a.peran(a.daftarPengguna, ketua...))
+	mux.Handle("POST /api/pengguna", a.peran(a.buatPengguna, ketua...))
+	mux.Handle("GET /api/pengguna/{id}", a.peran(a.ambilPengguna, ketua...))
+	mux.Handle("PUT /api/pengguna/{id}", a.peran(a.ubahPengguna, ketua...))
+	mux.Handle("POST /api/pengguna/{id}/nonaktif", a.peran(a.nonaktifkanPengguna, ketua...))
+	mux.Handle("POST /api/pengguna/{id}/aktif", a.peran(a.aktifkanPengguna, ketua...))
+	mux.Handle("POST /api/pengguna/{id}/reset-password", a.peran(a.resetPasswordPengguna, ketua...))
+
 	// Donasi — pengurus (butuh sesi). Rute literal ("ringkas", "dibaca") menang
 	// atas {id} karena lebih spesifik.
 	mux.Handle("GET /api/donasi", a.peran(a.daftarDonasi, semua...))
@@ -135,6 +163,12 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	mux.Handle("GET /api/publik/program", a.batasi(a.batasBaca, a.daftarProgramPublik))
 	mux.Handle("GET /api/publik/program/{slug}", a.batasi(a.batasBaca, a.programPublik))
 	mux.Handle("GET /api/publik/program/{slug}/gambar", a.batasi(a.batasBaca, a.gambarProgramPublik))
+	// Konten kegiatan publik: draf tidak pernah tampil. Jadwal rutin dan pengumuman hanya yang aktif/tayang.
+	mux.Handle("GET /api/publik/kegiatan", a.batasi(a.batasBaca, a.daftarKegiatanPublik))
+	mux.Handle("GET /api/publik/kegiatan/{slug}", a.batasi(a.batasBaca, a.kegiatanPublik))
+	mux.Handle("GET /api/publik/kegiatan/{slug}/gambar", a.batasi(a.batasBaca, a.gambarKegiatanPublik))
+	mux.Handle("GET /api/publik/jadwal-rutin", a.batasi(a.batasBaca, a.jadwalPublik))
+	mux.Handle("GET /api/publik/pengumuman", a.batasi(a.batasBaca, a.pengumumanPublik))
 	mux.HandleFunc("POST /api/publik/midtrans/notifikasi", a.notifikasiGerbang)
 	if a.simulasiBayar != nil {
 		mux.Handle("POST /api/publik/tiruan/{kode}/bayar", a.batasi(a.batasBuat, a.simulasikanBayar))

@@ -6,6 +6,8 @@
 	const menu = $derived([
 		{ href: '/penerimaan', label: 'Donasi', lencana: data.donasiBaru },
 		{ href: '/program-donasi', label: 'Program donasi', lencana: 0 },
+		{ href: '/konten', label: 'Konten kegiatan', lencana: 0 },
+		...(data.user.role === 'ketua' ? [{ href: '/pengguna', label: 'Pengguna', lencana: 0 }] : []),
 		{ href: '/kriteria', label: 'Kriteria & bobot', lencana: 0 },
 		{ href: '/audit', label: 'Audit log', lencana: 0 },
 		{ href: '/laporan', label: 'Laporan', lencana: 0 },

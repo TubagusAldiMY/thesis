@@ -12,7 +12,11 @@
 
 	let { children }: LayoutProps = $props();
 	// Formulir donasi dan halaman program memakai tata letak lebar; halaman lain (kuitansi, status) tetap sempit.
-	const lebar = $derived(page.route.id === '/(publik)/donasi' || (page.route.id ?? '').startsWith('/(publik)/program'));
+	const lebar = $derived(
+		page.route.id === '/(publik)/donasi' ||
+			(page.route.id ?? '').startsWith('/(publik)/program') ||
+			(page.route.id ?? '').startsWith('/(publik)/kegiatan')
+	);
 </script>
 
 <div class="bingkai">
@@ -23,6 +27,7 @@
 		</a>
 		<nav class="tautan-atas" aria-label="Navigasi publik">
 			<a href="/program">Program donasi</a>
+			<a href="/kegiatan">Kegiatan</a>
 			<a href="/login">Masuk pengurus</a>
 		</nav>
 	</header>
@@ -48,7 +53,8 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		gap: 1rem;
+		flex-wrap: wrap; /* tiga tautan + nama masjid tidak muat satu baris di ponsel */
+		gap: 0.5rem 1rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--garis);
 		background: var(--kartu);
@@ -62,7 +68,8 @@
 	}
 	.tautan-atas {
 		display: flex;
-		gap: 1rem;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
 		font-size: 0.875rem;
 	}
 	.tautan-atas a {

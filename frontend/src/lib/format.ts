@@ -2,7 +2,7 @@
 // dd/mm/yyyy. Nilai di API tetap angka & ISO 8601; hanya tampilan yang diubah.
 // Juga label ramah untuk enum dari API (asnaf, status, aksi audit).
 
-import type { Asnaf, JenisDonasi, StatusDonasi, StatusPeriode, StatusProgram } from './types';
+import type { Asnaf, JenisDonasi, Role, StatusDonasi, StatusPeriode, StatusProgram } from './types';
 
 const fmtAngka = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
 
@@ -151,7 +151,21 @@ export const labelAksi: Record<string, string> = {
 	DONASI_BATAL: 'Batalkan kuitansi',
 	PROGRAM_BUAT: 'Buat program donasi',
 	PROGRAM_UBAH: 'Ubah program donasi',
-	PROGRAM_KABAR: 'Kabar program donasi'
+	PROGRAM_KABAR: 'Kabar program donasi',
+	KONTEN_BUAT: 'Buat konten kegiatan',
+	KONTEN_UBAH: 'Ubah konten kegiatan',
+	KONTEN_HAPUS: 'Hapus konten kegiatan',
+	USER_BUAT: 'Buat akun pengguna',
+	USER_UBAH: 'Ubah akun pengguna',
+	USER_NONAKTIF: 'Nonaktifkan akun',
+	USER_AKTIF: 'Aktifkan akun',
+	USER_RESET_PASSWORD: 'Reset password akun'
+};
+
+/** Peran untuk tampilan: peran "ketua" dipakai Ketua Yayasan maupun Ketua DKM. */
+export const labelRole: Record<Role, string> = {
+	admin: 'Admin',
+	ketua: 'Ketua (Yayasan/DKM)'
 };
 
 export const labelStatusProgram: Record<StatusProgram, string> = {

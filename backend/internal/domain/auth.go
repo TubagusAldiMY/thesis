@@ -14,12 +14,13 @@ const (
 // User = akun aplikasi. PasswordHash berformat PHC Argon2id dan tidak pernah
 // ikut dikirim ke klien (tag json "-").
 type User struct {
-	ID           string `json:"id"`
-	Username     string `json:"username"`
-	PasswordHash string `json:"-"`
-	Nama         string `json:"nama"`
-	Role         Role   `json:"role"`
-	Aktif        bool   `json:"-"`
+	ID           string    `json:"id"`
+	Username     string    `json:"username"`
+	PasswordHash string    `json:"-"`
+	Nama         string    `json:"nama"`
+	Role         Role      `json:"role"`
+	Aktif        bool      `json:"-"`
+	CreatedAt    time.Time `json:"-"`
 }
 
 // Kode aksi audit log. Dikelompokkan ke kategori filter UI di
@@ -41,6 +42,14 @@ const (
 	AksiBukaKembali  = "BUKA_KEMBALI"
 	AksiSalur        = "SALUR"
 	AksiTutup        = "TUTUP"
+
+	// Kelola pengguna oleh Ketua. Detail audit hanya ID akun sasaran dan
+	// peran; tidak pernah password (NFR-03).
+	AksiPenggunaBuat     = "USER_BUAT"
+	AksiPenggunaUbah     = "USER_UBAH"
+	AksiPenggunaNonaktif = "USER_NONAKTIF"
+	AksiPenggunaAktif    = "USER_AKTIF"
+	AksiPenggunaReset    = "USER_RESET_PASSWORD"
 )
 
 // Audit = satu baris audit log. Detail TIDAK BOLEH memuat NIK, No. HP,

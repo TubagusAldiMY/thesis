@@ -14,7 +14,9 @@
 		['hitung', 'Hitung'],
 		['keputusan', 'Keputusan'],
 		['penyaluran', 'Penyaluran'],
-		['donasi', 'Donasi']
+		['donasi', 'Donasi'],
+		['konten', 'Konten'],
+		['pengguna', 'Pengguna']
 	];
 	const warna: Record<string, string> = {
 		LOGIN_GAGAL: 'merah',

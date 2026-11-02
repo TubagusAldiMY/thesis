@@ -333,6 +333,86 @@ export interface DonasiPublik {
 	bayar_url?: string;
 }
 
+// ---------- Pengguna (dikelola Ketua) ----------
+
+/** Akun untuk halaman kelola pengguna; hash password tidak pernah dikirim Go. */
+export interface Pengguna {
+	id: string;
+	username: string;
+	nama: string;
+	role: Role;
+	aktif: boolean;
+	dibuat_pada: string;
+}
+
+// ---------- Konten kegiatan keagamaan (CMS) ----------
+
+export type StatusKegiatan = 'draf' | 'terbit';
+
+export interface KategoriKegiatan {
+	kode: string;
+	label: string;
+}
+
+/** Kegiatan/artikel untuk pengurus maupun publik; angka turunan dihitung Go. */
+export interface Kegiatan {
+	id: string;
+	slug: string;
+	judul: string;
+	kategori: string;
+	kategori_label: string;
+	ringkasan: string;
+	isi: string;
+	/** "YYYY-MM-DD" atau "" (artikel tanpa tanggal acara) */
+	tanggal_acara: string;
+	/** "HH:MM" atau "" */
+	jam_acara: string;
+	lokasi: string;
+	status: StatusKegiatan;
+	ada_gambar: boolean;
+	/** penanda cache gambar (?v=), berubah setiap kegiatan diubah */
+	gambar_versi: number;
+	/** tanggal acara hari ini atau nanti */
+	mendatang: boolean;
+	dibuat_pada: string;
+}
+
+export interface KegiatanDaftarPengurus {
+	kategori: KategoriKegiatan[];
+	items: Kegiatan[];
+}
+
+export interface KegiatanDaftarPublik {
+	kategori: KategoriKegiatan[];
+	mendatang: Kegiatan[];
+	terdahulu: Kegiatan[];
+}
+
+/** Jadwal mingguan berulang. hari: 0 = Ahad ... 6 = Sabtu. */
+export interface JadwalRutin {
+	id: string;
+	judul: string;
+	pemateri: string;
+	hari: number;
+	hari_label: string;
+	jam: string;
+	lokasi: string;
+	keterangan: string;
+	aktif: boolean;
+}
+
+export interface Pengumuman {
+	id: string;
+	judul: string;
+	isi: string;
+	/** "YYYY-MM-DD" atau "" (tayang terus) */
+	tampil_sampai: string;
+	terbit: boolean;
+	/** terbit dan masih dalam masa tayang hari ini */
+	tayang: boolean;
+	dibuat_pada: string;
+}
+
 // ---------- Program donasi (penggalangan dana bertarget) ----------
 
 export type StatusProgram = 'draf' | 'aktif' | 'selesai';

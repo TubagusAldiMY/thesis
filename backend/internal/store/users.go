@@ -10,22 +10,83 @@ import (
 	"spkzakat/internal/domain"
 )
 
-const kolomUser = `u.id, u.username, u.password_hash, u.nama, u.role, u.is_active`
+const kolomUser = `u.id, u.username, u.password_hash, u.nama, u.role, u.is_active, u.created_at`
 
 type userRow struct {
-	ID           string `db:"id"`
-	Username     string `db:"username"`
-	PasswordHash string `db:"password_hash"`
-	Nama         string `db:"nama"`
-	Role         string `db:"role"`
-	Aktif        bool   `db:"is_active"`
+	ID           string    `db:"id"`
+	Username     string    `db:"username"`
+	PasswordHash string    `db:"password_hash"`
+	Nama         string    `db:"nama"`
+	Role         string    `db:"role"`
+	Aktif        bool      `db:"is_active"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (r userRow) domain() domain.User {
 	return domain.User{
 		ID: r.ID, Username: r.Username, PasswordHash: r.PasswordHash,
-		Nama: r.Nama, Role: domain.Role(r.Role), Aktif: r.Aktif,
+		Nama: r.Nama, Role: domain.Role(r.Role), Aktif: r.Aktif, CreatedAt: r.CreatedAt,
 	}
+}
+
+// ListUsers mengembalikan SEMUA akun (aktif lebih dulu, lalu menurut nama) untuk
+// halaman kelola pengguna. Hash password ikut terbaca di struct tetapi tidak
+// pernah diteruskan ke klien (service memakai PenggunaView).
+func (s *Store) ListUsers(ctx context.Context) ([]domain.User, error) {
+	var rows []userRow
+	err := sqlx.SelectContext(ctx, s.q, &rows,
+		`SELECT `+kolomUser+` FROM users u WHERE u.deleted_at IS NULL ORDER BY u.is_active DESC, u.nama, u.username`)
+	if err != nil {
+		return nil, fmt.Errorf("store.ListUsers: %w", mapErr(err))
+	}
+	hasil := make([]domain.User, 0, len(rows))
+	for _, r := range rows {
+		hasil = append(hasil, r.domain())
+	}
+	return hasil, nil
+}
+
+// GetUserKelola mengambil akun menurut ID TANPA melihat status aktif, supaya akun
+// nonaktif tetap bisa dibuka, diubah, atau diaktifkan lagi. forUpdate mengunci
+// barisnya sampai transaksi selesai.
+func (s *Store) GetUserKelola(ctx context.Context, id string, forUpdate bool) (domain.User, error) {
+	q := `SELECT ` + kolomUser + ` FROM users u WHERE u.id = ? AND u.deleted_at IS NULL`
+	if forUpdate {
+		q += ` FOR UPDATE`
+	}
+	var r userRow
+	if err := sqlx.GetContext(ctx, s.q, &r, q, id); err != nil {
+		return domain.User{}, fmt.Errorf("store.GetUserKelola: %w", mapErr(err))
+	}
+	return r.domain(), nil
+}
+
+// UpdateUserProfil mengubah nama dan peran akun.
+func (s *Store) UpdateUserProfil(ctx context.Context, id, nama string, role domain.Role) error {
+	res, err := s.q.ExecContext(ctx,
+		`UPDATE users SET nama = ?, role = ? WHERE id = ? AND deleted_at IS NULL`, nama, string(role), id)
+	return cekSatu(res, err, "store.UpdateUserProfil", id)
+}
+
+// SetUserAktif menonaktifkan atau mengaktifkan kembali akun. Akun tidak pernah
+// dihapus: audit log dan data lain merujuk ke ID-nya.
+func (s *Store) SetUserAktif(ctx context.Context, id string, aktif bool) error {
+	res, err := s.q.ExecContext(ctx,
+		`UPDATE users SET is_active = ? WHERE id = ? AND deleted_at IS NULL`, aktif, id)
+	return cekSatu(res, err, "store.SetUserAktif", id)
+}
+
+// KunciAdminAktif mengunci semua baris Admin aktif dan mengembalikan jumlahnya.
+// Dipanggil di dalam transaksi sebelum menonaktifkan/menurunkan seorang Admin,
+// supaya dua permintaan bersamaan tidak sama-sama menyisakan nol Admin aktif.
+func (s *Store) KunciAdminAktif(ctx context.Context) (int, error) {
+	var ids []string
+	err := sqlx.SelectContext(ctx, s.q, &ids,
+		`SELECT id FROM users WHERE role = 'admin' AND is_active = TRUE AND deleted_at IS NULL FOR UPDATE`)
+	if err != nil {
+		return 0, fmt.Errorf("store.KunciAdminAktif: %w", mapErr(err))
+	}
+	return len(ids), nil
 }
 
 // CreateUser menyimpan akun baru dan mengisi u.ID. Username dobel →

@@ -14,7 +14,7 @@ Sistem ini membantu pengurus **meranking calon penerima secara terukur** memakai
 | **Admin / Petugas Amil** | Kelola data mustahik, kriteria & bobot, periode penyaluran, input penilaian, jalankan perhitungan ARAS, catat penyaluran |
 | **Ketua DKM** | Melihat hasil ranking, menyetujui/menolak daftar penerima, melihat laporan |
 
-Halaman **Landing** dan **Login** terbuka untuk umum (landing hanya penjelasan metode + contoh ranking statis, tanpa data mustahik asli); semua halaman lain butuh login. Tidak ada registrasi mandiri: akun dibuat lewat CLI (FR-17).
+Halaman **Landing** dan **Login** terbuka untuk umum (landing hanya penjelasan metode + contoh ranking statis, tanpa data mustahik asli); semua halaman lain butuh login. Tidak ada registrasi mandiri: akun pertama dibuat lewat CLI, akun berikutnya dikelola Ketua lewat halaman Pengguna (FR-17).
 
 Menu per peran (acuan: folder `App/Design/`):
 - **Admin**: Dashboard, Mustahik, Kriteria, Periode, Audit log.
@@ -53,7 +53,7 @@ Menu per peran (acuan: folder `App/Design/`):
 | FR-14 | Sistem membuat laporan periode dengan **satu template** untuk semua ukuran layar: kop masjid, ringkasan, A. kriteria & bobot, B. ranking (S, K, keterangan penerima/cadangan), C. realisasi penyaluran + total, kolom tanda tangan Admin & Ketua. Keluaran: cetak/Simpan PDF (lewat dialog cetak browser) dan CSV | Admin, Ketua |
 | FR-15 | Perubahan data penting (nilai, bobot, persetujuan, penyaluran) tercatat di audit log | Sistem |
 | FR-16 | Landing publik menampilkan profil masjid, transparansi dana (angka agregat tanpa data pribadi), jadwal salat, dan ringkasan penyaluran; penjelasan metode (5 kriteria + bobot, rumus ARAS, contoh ranking **statis**, bukan data database) ada di halaman publik `/cara-kerja` | Umum |
-| FR-17 | Akun Admin/Ketua dibuat dan di-reset passwordnya lewat CLI `cmd/useradmin` (tidak ada halaman kelola akun) | Pengembang |
+| FR-17 | Ketua (Yayasan/DKM) mengelola akun lewat halaman Pengguna: membuat akun Admin/Ketua, mengubah nama dan peran, menonaktifkan/mengaktifkan kembali, dan mereset password. Akun tidak dihapus; menonaktifkan langsung mencabut semua sesinya; tidak boleh menyentuh akun sendiri; selalu tersisa minimal satu Admin aktif. Akun pertama dan pemulihan darurat tetap lewat CLI `cmd/useradmin` | Ketua, Pengembang |
 | FR-18 | Dashboard pengurus menampilkan kartu ringkasan penerimaan, penyaluran, dan saldo tercatat, jadwal salat, ringkasan dana zakat dan infak, grafik penerimaan-penyaluran 12 bulan, penerimaan menurut jenis, donasi terbaru, serta bagian penyaluran metode ARAS (mustahik aktif per asnaf, stepper 5 langkah periode aktif, dan periode terbaru) | Admin, Ketua |
 | FR-19 | Periode berstatus *ditolak* menampilkan catatan Ketua + riwayat run; Admin dapat "Buka kembali" (kembali ke draft) dan tetap melihat ranking run lama | Admin |
 | FR-20 | Audit log bisa difilter per kategori (Login, Data & penilaian, Hitung, Keputusan, Penyaluran), menampilkan **nama pengguna** pelaku, hanya-baca | Admin, Ketua |
@@ -76,7 +76,7 @@ Menu per peran (acuan: folder `App/Design/`):
 ## 6. Batasan Masalah (di luar cakupan)
 - Pencatatan pemasukan zakat/infak harian (hanya "dana tersedia" per periode yang diinput).
 - Multi-masjid / multi-tenant.
-- Halaman kelola akun (buat/reset user lewat UI) — diganti CLI (FR-17); naikkan jadi fitur bila pengurus sering berganti.
+- ~~Halaman kelola akun~~ — sudah ada sejak permintaan Ketua Yayasan (Nov 2026), lihat FR-17. Yang tetap di luar cakupan: registrasi mandiri, hapus akun permanen, dan pemulihan password lewat email.
 - Notifikasi WhatsApp/SMS, aplikasi mobile native, pembayaran online.
 - Pembobotan otomatis (AHP/entropy): bobot diisi manual; validasi bobot dilakukan lewat wawancara dengan pengurus.
 - Penentuan syariat per kasus (fatwa): sistem hanya memfilter golongan asnaf dasar.

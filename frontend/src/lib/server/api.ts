@@ -176,6 +176,13 @@ export function wajibAdmin(user: User | null): asserts user is User {
 	}
 }
 
+/** wajibKetua: halaman khusus Ketua (kelola pengguna) dibalas 403 untuk Admin. */
+export function wajibKetua(user: User | null): asserts user is User {
+	if (user?.role !== 'ketua') {
+		error(403, 'Halaman ini hanya untuk Ketua (Yayasan/DKM). Anda masuk sebagai Admin.');
+	}
+}
+
 /** teks mengambil isian formulir sebagai string terpangkas ("" bila tidak ada). */
 export function teks(fd: FormData, nama: string): string {
 	const v = fd.get(nama);

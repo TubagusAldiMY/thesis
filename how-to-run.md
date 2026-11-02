@@ -104,7 +104,7 @@ cd backend && go run ./cmd/migrate && cd ..
 Hasil: log JSON `"migrasi selesai"`. Aman dijalankan berulang (`"diterapkan":[]` bila sudah terkini).
 
 ### 4. Buat akun Admin dan Ketua DKM (FR-17)
-Tidak ada halaman kelola akun; akun dibuat lewat CLI. Password diminta tanpa tampil di layar (minimal 12 karakter).
+Akun **pertama** dibuat lewat CLI. Setelah ada satu akun Ketua, Ketua (Yayasan/DKM) membuat, menonaktifkan, dan mereset akun lain lewat menu **Pengguna** di aplikasi; CLI ini tetap dipakai untuk pemulihan darurat (mis. lupa password satu-satunya Ketua). Password diminta tanpa tampil di layar (minimal 12 karakter).
 
 ```bash
 set -a && . ./.env && set +a
@@ -285,6 +285,8 @@ Ringkas (satu server masjid / VPS kecil):
 | `seed-demo.sh`: `GAGAL POST /api/mustahik → 401` | Server Go dijalankan dengan `COOKIE_SECURE=true`; curl tidak mengirim cookie Secure lewat http. Jalankan server dengan `COOKIE_SECURE=false` untuk dev. |
 | `seed-demo.sh`: `… 422 … NIK sudah terdaftar` | Data contoh sudah pernah dibuat. Pakai data yang ada, atau kosongkan database dev (`down -v`, migrasi ulang, buat akun ulang). |
 | `TEST_DATABASE_URL kosong: test integrasi MySQL dilewati` | `.env` belum dimuat ke shell. |
+| Halaman `/kegiatan` atau `/konten` galat 500, log Go `Table '...kegiatan' doesn't exist` | Migrasi V006 belum dijalankan. Sama seperti V005: `go run ./cmd/migrate`, atau bangun ulang container (`up -d --build api web`). |
+| Ketua tidak bisa menonaktifkan akun: "Harus tersisa minimal satu Admin aktif" | Aturan sengaja: tanpa Admin tidak ada yang bisa mengisi data. Buat atau aktifkan Admin lain lebih dulu. Akun sendiri tidak bisa dinonaktifkan/diubah perannya dari halaman Pengguna (hanya Ketua lain yang bisa). |
 | Halaman `/program` atau `/program-donasi` galat 500, log Go `Table '...program_donasi' doesn't exist` | Migrasi V005 belum dijalankan. Jalankan `cd backend && go run ./cmd/migrate`. Di Docker cukup bangun ulang: `docker compose --env-file .env up -d --build api web` (container `api` menjalankan migrasi setiap start). |
 | Unggah gambar sampul gagal dengan galat 413 / *Payload Too Large* | Frontend dijalankan `node build` tanpa `BODY_SIZE_LIMIT` (bawaan 512 KB). Set `BODY_SIZE_LIMIT=3M`. Batas sebenarnya tetap 2 MB (dicek SvelteKit dan Go). |
 | `migrate: isi migrasi yang sudah diterapkan berubah` | File `V*.sql` lama diedit. Kembalikan; perubahan skema = file migrasi **baru**. |
