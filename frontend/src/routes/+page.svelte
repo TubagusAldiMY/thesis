@@ -51,9 +51,7 @@
 				<a href="#jadwal">Jadwal salat</a>
 				<a href="#donasi">Donasi</a>
 				<a href="/program">Program</a>
-				{#if tampilTransparansi}<a href="#transparansi">Transparansi</a>{/if}
 				<a href="#penyaluran">Penyaluran</a>
-				{#if adaKontak}<a href="#kontak">Kontak</a>{/if}
 			</nav>
 			<div class="aksi-pil">
 				<a class="masuk" href="/login">Masuk pengurus</a>
