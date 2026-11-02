@@ -26,7 +26,7 @@ Browser ──HTTPS──► SvelteKit (frontend/, Node)  ──fetch + cookie s
 | `.env.example` | Variabel backend; `frontend/.env.example` untuk frontend |
 | `scripts/seed-demo.sh` | Data contoh untuk demo sidang (lewat API); lebih dulu memasang kriteria final |
 | `scripts/terapkan-kriteria-final.sh` | Memasang kriteria hasil konfirmasi narasumber lewat `PUT /api/kriteria` (C1 tingkat 1–4, bobot 0,30/0,30/0,10/0,15/0,15); idempoten. Seed V002 sengaja tidak diubah |
-| **Backend** `backend/` | Modul Go `spkzakat` (Go 1.23) |
+| **Backend** `backend/` | Modul Go `spkzakat` (Go 1.26) |
 | `backend/cmd/server/` | **Entry point API**: baca env → buka MySQL → rakit crypto + service + httpapi → listen + graceful shutdown |
 | `backend/cmd/migrate/` | CLI migrasi (`DATABASE_URL`) |
 | `backend/cmd/useradmin/` | CLI buat akun / reset password (FR-17), password dibaca tanpa echo |

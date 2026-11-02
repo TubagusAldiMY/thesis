@@ -32,7 +32,7 @@ Catatan: di Docker, IP klien yang tercatat di audit log dan penguncian login ada
 ## Prasyarat
 | Kebutuhan | Versi | Cek |
 |-----------|-------|-----|
-| Go | 1.23 atau lebih baru | `go version` |
+| Go | 1.26.10 atau lebih baru | `go version` |
 | Node.js | 20 LTS atau lebih baru (diuji dengan 24) | `node --version` |
 | Docker + Docker Compose | Compose v2 | `docker compose version` |
 | OpenSSL (membuat password/kunci acak) | bebas | `openssl version` |
@@ -270,7 +270,7 @@ Ringkas (satu server masjid / VPS kecil):
 | Gejala | Penyebab & solusi |
 |--------|-------------------|
 | `go: command not found` | Go belum terpasang / belum di `PATH`. Pasang dari <https://go.dev/dl/>. |
-| `go.mod requires go >= 1.2x` atau Go mengunduh toolchain | Project dikunci ke Go 1.23. Jangan `go get ...@latest`; pakai `GOTOOLCHAIN=local` dan kembalikan `go 1.23` di `go.mod`. |
+| `go.mod requires go >= 1.2x` atau Go mengunduh toolchain | Project dikunci ke Go 1.26.10. Jangan `go get ...@latest`; pakai `GOTOOLCHAIN=local` dan kembalikan `go 1.26.10` di `go.mod`. |
 | `syntax error near unexpected token '('` saat `. ./.env` (bash) | Nilai `DATABASE_URL`/`TEST_DATABASE_URL` belum diberi tanda kutip tunggal. Ubah jadi `DATABASE_URL='root:…@tcp(127.0.0.1:33070)/spkzakat'` (zsh menerima tanpa kutip, bash tidak). |
 | `required variable MYSQL_ROOT_PASSWORD is missing` | `.env` belum dibuat atau compose dijalankan tanpa `--env-file .env`. |
 | Docker: `Bind for 127.0.0.1:3101 failed: port is already allocated` | Port frontend dipakai proses/container lain (cek `ss -ltnp \| grep 3101`). Set `WEB_PORT` dan `WEB_ORIGIN` di `.env` ke port bebas, lalu `up -d`. |

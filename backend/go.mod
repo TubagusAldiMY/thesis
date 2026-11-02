@@ -1,8 +1,6 @@
 module spkzakat
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.26.10
 
 require (
 	github.com/go-pdf/fpdf v0.9.0

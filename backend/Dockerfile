@@ -1,6 +1,6 @@
 # Go API SPK Zakat: build statis, lalu satu image kecil berisi server + migrate + useradmin.
 # Build dari folder App/backend:  docker build -t spkzakat-api backend
-FROM golang:1.23-alpine AS build
+FROM golang:1.26.10-alpine AS build
 # Toolchain dari image saja (jangan mengunduh versi Go lain diam-diam).
 ENV GOTOOLCHAIN=local CGO_ENABLED=0
 WORKDIR /src
