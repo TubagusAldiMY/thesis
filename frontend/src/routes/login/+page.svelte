@@ -54,6 +54,12 @@
 			{#if data.sesiHabis && !form}
 				<p class="kotak-info" role="status">Sesi Anda sudah berakhir. Silakan masuk kembali.</p>
 			{/if}
+			{#if data.setupSelesai && !form}
+				<p class="kotak-sukses" role="status">Akun Ketua dibuat. Silakan masuk dengan akun tersebut.</p>
+			{/if}
+			{#if data.setupAktif}
+				<p class="kotak-info" role="status">Aplikasi ini belum punya akun. <a href="/setup">Buat akun Ketua pertama →</a></p>
+			{/if}
 
 			<div class="field">
 				<label for="username">Username</label>

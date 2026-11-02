@@ -47,6 +47,10 @@ type Service struct {
 	masjid kuitansi.Identitas
 	// sekarang = sumber waktu; diganti di test supaya nomor kuitansi bisa diuji.
 	sekarang func() time.Time
+	// setupToken = kode setup awal (setup.go); kosong = setup tidak aktif.
+	// setupMu juga menyerialkan pembuatan akun pertama.
+	setupMu    sync.Mutex
+	setupToken string
 }
 
 // New membuat Service. enc mengenkripsi NIK/No. HP; idx menghitung HMAC NIK
@@ -121,7 +125,7 @@ var KategoriAudit = map[string][]string{
 		domain.AksiProgramBuat, domain.AksiProgramUbah, domain.AksiProgramKabar},
 	"konten": {domain.AksiKontenBuat, domain.AksiKontenUbah, domain.AksiKontenHapus},
 	"pengguna": {domain.AksiPenggunaBuat, domain.AksiPenggunaUbah, domain.AksiPenggunaNonaktif,
-		domain.AksiPenggunaAktif, domain.AksiPenggunaReset},
+		domain.AksiPenggunaAktif, domain.AksiPenggunaReset, domain.AksiSetupAwal},
 }
 
 // AuditHalaman = satu halaman audit log.

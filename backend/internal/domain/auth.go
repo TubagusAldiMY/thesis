@@ -50,6 +50,7 @@ const (
 	AksiPenggunaNonaktif = "USER_NONAKTIF"
 	AksiPenggunaAktif    = "USER_AKTIF"
 	AksiPenggunaReset    = "USER_RESET_PASSWORD"
+	AksiSetupAwal        = "SETUP_AWAL" // akun Ketua pertama dibuat lewat halaman /setup
 )
 
 // Audit = satu baris audit log. Detail TIDAK BOLEH memuat NIK, No. HP,

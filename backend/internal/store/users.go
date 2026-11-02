@@ -29,6 +29,16 @@ func (r userRow) domain() domain.User {
 	}
 }
 
+// CountUsers menghitung SEMUA akun (aktif maupun nonaktif). Nol = instalasi baru
+// yang belum punya akun sama sekali, satu-satunya keadaan saat /setup boleh dipakai.
+func (s *Store) CountUsers(ctx context.Context) (int, error) {
+	var n int
+	if err := sqlx.GetContext(ctx, s.q, &n, `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`); err != nil {
+		return 0, fmt.Errorf("store.CountUsers: %w", mapErr(err))
+	}
+	return n, nil
+}
+
 // ListUsers mengembalikan SEMUA akun (aktif lebih dulu, lalu menurut nama) untuk
 // halaman kelola pengguna. Hash password ikut terbaca di struct tetapi tidak
 // pernah diteruskan ke klien (service memakai PenggunaView).

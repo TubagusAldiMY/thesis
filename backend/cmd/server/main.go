@@ -151,6 +151,27 @@ func pasangGerbang(cfg config, svc *service.Service, log *slog.Logger) ([]httpap
 	return nil, nil
 }
 
+// pasangSetup mengaktifkan halaman /setup bila belum ada akun sama sekali, dan
+// mencetak kode setupnya ke log. Level WARN supaya tetap terlihat walau LOG_LEVEL
+// dinaikkan. Ini SATU-SATUNYA tempat kode itu tampil: yang bisa membaca log
+// server adalah pemilik server, itulah bukti kepemilikan yang dipakai /setup.
+// Kegagalan database tidak menghentikan server (setup hanya tidak aktif).
+func pasangSetup(svc *service.Service, cfg config, log *slog.Logger) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	kode, err := svc.SiapkanSetup(ctx)
+	if err != nil {
+		log.Error("setup awal tidak dapat disiapkan", "error", err.Error())
+		return
+	}
+	if kode == "" {
+		return
+	}
+	alamat := strings.TrimRight(cfg.webOrigin, "/") + "/setup"
+	log.Warn("BELUM ADA AKUN: buka halaman setup lalu masukkan kode ini untuk membuat Ketua pertama",
+		"alamat", alamat, "kode_setup", kode)
+}
+
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	cfg, err := muatConfig()
@@ -181,6 +202,7 @@ func main() {
 		os.Exit(1)
 	}
 	svc := service.New(st, enc, idx)
+	pasangSetup(svc, cfg, log)
 	opsi, err := pasangGerbang(cfg, svc, log)
 	if err != nil {
 		log.Error("payment gateway", "error", err.Error())

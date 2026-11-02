@@ -163,6 +163,9 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	mux.Handle("GET /api/publik/program", a.batasi(a.batasBaca, a.daftarProgramPublik))
 	mux.Handle("GET /api/publik/program/{slug}", a.batasi(a.batasBaca, a.programPublik))
 	mux.Handle("GET /api/publik/program/{slug}/gambar", a.batasi(a.batasBaca, a.gambarProgramPublik))
+	// Setup awal: hanya hidup selama belum ada akun dan butuh kode dari log server.
+	mux.Handle("GET /api/publik/setup", a.batasi(a.batasBaca, a.setupStatus))
+	mux.Handle("POST /api/publik/setup", a.batasi(a.batasBuat, a.setupBuat))
 	// Konten kegiatan publik: draf tidak pernah tampil. Jadwal rutin dan pengumuman hanya yang aktif/tayang.
 	mux.Handle("GET /api/publik/kegiatan", a.batasi(a.batasBaca, a.daftarKegiatanPublik))
 	mux.Handle("GET /api/publik/kegiatan/{slug}", a.batasi(a.batasBaca, a.kegiatanPublik))

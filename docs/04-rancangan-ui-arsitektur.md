@@ -140,7 +140,7 @@ Pemetaan `kategori` audit → `action`: login = LOGIN, LOGIN_GAGAL · data = MUS
 - Query selalu parameterized; NIK/HP terenkripsi AES-256-GCM, kunci dari env var.
 - `log/slog` handler JSON → stdout; field `request_id`, `method`, `path`, `status`, `duration_ms`, `user_id` (tanpa NIK/HP/password/token). `request_id` dari header `X-Request-Id` bila ada, jika tidak digenerate; dikembalikan di response dan di body error.
 - Rate limit login per username + IP (5 gagal → kunci 15 menit); pesan error generik + `sisa_percobaan` dihitung juga untuk username yang tidak ada, supaya tidak bisa dipakai menebak akun. `ponytail:` penghitung di memori proses (hilang saat restart, hanya 1 instance) — pindah ke tabel `login_attempts` bila perlu multi-instance.
-- Akun pertama dibuat lewat CLI `cmd/useradmin` (`buat --role admin|ketua`, `reset-password`; password dimasukkan interaktif, bukan argumen/log). Akun berikutnya dikelola Ketua lewat halaman `/pengguna` (FR-17): buat, ubah nama/peran, nonaktifkan/aktifkan, reset password. Password tidak pernah masuk audit maupun log.
+- Akun Ketua pertama dibuat lewat halaman `/setup` (hanya selama tabel `users` kosong, butuh kode sekali pakai dari log server). CLI `cmd/useradmin` (`buat --role admin|ketua`, `reset-password`; password dimasukkan interaktif, bukan argumen/log) tetap untuk pemulihan darurat. Akun berikutnya dikelola Ketua lewat halaman `/pengguna` (FR-17): buat, ubah nama/peran, nonaktifkan/aktifkan, reset password. Password tidak pernah masuk audit maupun log.
 - Audit log untuk login (sukses & gagal), ubah bobot, hitung, keputusan, penyaluran, buka kembali, tutup.
 
 ## 7. Strategi Test (saat implementasi)

@@ -1,6 +1,6 @@
 import { dev } from '$app/environment';
 import { fail, redirect } from '@sveltejs/kit';
-import { mentah, NAMA_COOKIE, teks } from '$lib/server/api';
+import { api, mentah, NAMA_COOKIE, teks } from '$lib/server/api';
 import type { ApiErrorBody } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,9 +11,15 @@ function tujuanAman(next: string | null): string {
 	return next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
 }
 
-export const load: PageServerLoad = ({ locals, url }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals, url } = event;
 	if (locals.user) redirect(303, '/dashboard');
-	return { sesiHabis: url.searchParams.get('sesi') === 'habis' };
+	// Instalasi baru (belum ada akun): tawarkan /setup. Gagal menghubungi Go = anggap tidak aktif,
+	// halaman login tidak boleh ikut rusak.
+	const setupAktif = await api<{ aktif: boolean }>(event, 'GET', '/api/publik/setup')
+		.then((r) => r.aktif)
+		.catch(() => false);
+	return { sesiHabis: url.searchParams.get('sesi') === 'habis', setupSelesai: url.searchParams.get('setup') === '1', setupAktif };
 };
 
 export const actions: Actions = {

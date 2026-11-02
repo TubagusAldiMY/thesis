@@ -104,7 +104,19 @@ cd backend && go run ./cmd/migrate && cd ..
 Hasil: log JSON `"migrasi selesai"`. Aman dijalankan berulang (`"diterapkan":[]` bila sudah terkini).
 
 ### 4. Buat akun Admin dan Ketua DKM (FR-17)
-Akun **pertama** dibuat lewat CLI. Setelah ada satu akun Ketua, Ketua (Yayasan/DKM) membuat, menonaktifkan, dan mereset akun lain lewat menu **Pengguna** di aplikasi; CLI ini tetap dipakai untuk pemulihan darurat (mis. lupa password satu-satunya Ketua). Password diminta tanpa tampil di layar (minimal 12 karakter).
+Akun **pertama** (Ketua) dibuat lewat halaman **setup awal**, tanpa terminal:
+
+1. Jalankan server pada database yang masih kosong. Server mencetak satu baris `WARN` berisi `kode_setup` ke log:
+   ```bash
+   docker compose --env-file .env logs api | grep kode_setup      # Docker
+   ```
+   (tanpa Docker: baris yang sama muncul di terminal tempat `go run ./cmd/server` berjalan).
+2. Buka `http://localhost:3101/setup` (atau alamat aplikasi), isi **kode setup**, nama, username, dan password (≥ 12 karakter).
+3. Setelah berhasil Anda dialihkan ke halaman login. Halaman `/setup` langsung mati dan kode lama tidak berlaku lagi.
+
+Aturan keamanannya: halaman hanya hidup selama **tabel `users` kosong**, dan kode setup (acak 128 bit) hanya ada di log server dan memori proses, jadi hanya orang yang bisa membaca log server yang bisa memakainya. Server restart selama masih kosong = kode baru. Lima kode salah dari satu IP mengunci 15 menit.
+
+Setelah ada satu akun Ketua, Ketua (Yayasan/DKM) membuat, menonaktifkan, dan mereset akun lain lewat menu **Pengguna** di aplikasi. CLI di bawah tetap ada untuk pemulihan darurat (mis. lupa password satu-satunya Ketua) dan untuk skrip. Password diminta tanpa tampil di layar (minimal 12 karakter).
 
 ```bash
 set -a && . ./.env && set +a
@@ -285,6 +297,8 @@ Ringkas (satu server masjid / VPS kecil):
 | `seed-demo.sh`: `GAGAL POST /api/mustahik → 401` | Server Go dijalankan dengan `COOKIE_SECURE=true`; curl tidak mengirim cookie Secure lewat http. Jalankan server dengan `COOKIE_SECURE=false` untuk dev. |
 | `seed-demo.sh`: `… 422 … NIK sudah terdaftar` | Data contoh sudah pernah dibuat. Pakai data yang ada, atau kosongkan database dev (`down -v`, migrasi ulang, buat akun ulang). |
 | `TEST_DATABASE_URL kosong: test integrasi MySQL dilewati` | `.env` belum dimuat ke shell. |
+| `/setup` langsung mengalihkan ke `/login` | Sudah ada akun di database (setup hanya untuk instalasi kosong). Masuk dengan akun itu, atau pulihkan lewat `useradmin reset-password`. |
+| `/setup` terbuka tetapi kode setup tidak ketemu di log | Kode dicetak saat server start. `docker compose logs api \| grep kode_setup`; log sudah terlalu panjang → `docker compose restart api` mencetak kode baru (selama database masih kosong). |
 | Halaman `/kegiatan` atau `/konten` galat 500, log Go `Table '...kegiatan' doesn't exist` | Migrasi V006 belum dijalankan. Sama seperti V005: `go run ./cmd/migrate`, atau bangun ulang container (`up -d --build api web`). |
 | Ketua tidak bisa menonaktifkan akun: "Harus tersisa minimal satu Admin aktif" | Aturan sengaja: tanpa Admin tidak ada yang bisa mengisi data. Buat atau aktifkan Admin lain lebih dulu. Akun sendiri tidak bisa dinonaktifkan/diubah perannya dari halaman Pengguna (hanya Ketua lain yang bisa). |
 | Halaman `/program` atau `/program-donasi` galat 500, log Go `Table '...program_donasi' doesn't exist` | Migrasi V005 belum dijalankan. Jalankan `cd backend && go run ./cmd/migrate`. Di Docker cukup bangun ulang: `docker compose --env-file .env up -d --build api web` (container `api` menjalankan migrasi setiap start). |
