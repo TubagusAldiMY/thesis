@@ -285,9 +285,14 @@ export interface Donasi {
 	id: string;
 	kode_publik: string;
 	nama: string;
+	/** donatur memilih namanya disembunyikan di daftar donatur program */
+	anonim: boolean;
 	no_hp?: string;
 	no_hp_tersamar?: string;
 	jenis: JenisDonasi;
+	/** kosong = donasi umum */
+	program_id: string;
+	program_judul: string;
 	jumlah: number;
 	sumber: 'web' | 'petugas';
 	metode: string;
@@ -319,12 +324,61 @@ export interface DonasiPublik {
 	status: StatusDonasi;
 	nama: string;
 	jenis: JenisDonasi;
+	program_judul?: string;
 	jumlah: number;
 	metode: string;
 	nomor_kuitansi?: string;
 	dibayar_pada?: string;
 	/** tautan halaman bayar gateway, hanya selama status menunggu */
 	bayar_url?: string;
+}
+
+// ---------- Program donasi (penggalangan dana bertarget) ----------
+
+export type StatusProgram = 'draf' | 'aktif' | 'selesai';
+
+/** Program untuk pengurus maupun publik; angka turunan dihitung Go. */
+export interface Program {
+	id: string;
+	slug: string;
+	judul: string;
+	ringkasan: string;
+	cerita: string;
+	target: number;
+	/** "YYYY-MM-DD" atau "" (tanpa batas) */
+	batas_waktu: string;
+	status: StatusProgram;
+	ada_gambar: boolean;
+	/** penanda cache gambar (?v=), berubah setiap program diubah */
+	gambar_versi: number;
+	terkumpul: number;
+	donatur: number;
+	/** 0–100, untuk lebar bar kemajuan */
+	persen: number;
+	/** null = tanpa batas waktu; 0 = hari terakhir */
+	sisa_hari: number | null;
+	/** masih menerima donasi dari halaman publik */
+	terbuka: boolean;
+	dibuat_pada: string;
+}
+
+export interface KabarProgram {
+	id: string;
+	judul: string;
+	isi: string;
+	dibuat_pada: string;
+}
+
+/** Baris daftar donatur publik; nama anonim sudah "Hamba Allah" dari Go. */
+export interface DonaturProgram {
+	nama: string;
+	jumlah: number;
+	dibayar_pada: string;
+}
+
+export interface ProgramDetail extends Program {
+	kabar: KabarProgram[];
+	donatur_terbaru: DonaturProgram[];
 }
 
 /** Bentuk body error Go API. */

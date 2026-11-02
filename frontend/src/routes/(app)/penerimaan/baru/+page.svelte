@@ -4,12 +4,16 @@
 	import { hariIniISO, labelJenisDonasi, semuaJenisDonasi } from '$lib/format';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 	let mengirim = $state(false);
 
 	const hariIni = hariIniISO();
+	// Program dipilih → jenis dikunci ke infak (Go juga menolak zakat ke program).
+	// svelte-ignore state_referenced_locally
+	let programId = $state(form?.nilai?.program_id ?? data.programAwal);
 	const nilai = $derived({
 		nama: form?.nilai?.nama ?? '',
+		anonim: form?.nilai?.anonim ?? false,
 		jenis: form?.nilai?.jenis || 'infak',
 		jumlah: form?.nilai?.jumlah ?? '',
 		metode: form?.nilai?.metode || 'tunai',
@@ -47,12 +51,31 @@
 			{#if galat('nama')}<span class="galat" role="alert">{galat('nama')}</span>{/if}
 		</div>
 
+		{#if data.program.length > 0}
+			<div class="field">
+				<label for="program_id">Untuk program (opsional)</label>
+				<select id="program_id" name="program_id" bind:value={programId} aria-invalid={Boolean(galat('program'))}>
+					<option value="">— Donasi umum —</option>
+					{#each data.program as p (p.id)}<option value={p.id}>{p.judul}{p.status === 'selesai' ? ' (selesai)' : ''}</option>{/each}
+				</select>
+				<small>Pilih bila infak ini untuk program donasi tertentu; jumlahnya ikut menambah kemajuan program.</small>
+				{#if galat('program')}<span class="galat" role="alert">{galat('program')}</span>{/if}
+				{#if programId}
+					<label class="centang">
+						<input type="checkbox" name="anonim" checked={nilai.anonim} />
+						<span>Donatur minta namanya tidak ditampilkan di daftar donatur publik</span>
+					</label>
+				{/if}
+			</div>
+		{/if}
+
 		<div class="dua">
 			<div class="field">
 				<label for="jenis">Jenis *</label>
-				<select id="jenis" name="jenis" value={nilai.jenis} aria-invalid={Boolean(galat('jenis'))}>
+				<select id="jenis" name="jenis" value={programId ? 'infak' : nilai.jenis} disabled={Boolean(programId)} aria-invalid={Boolean(galat('jenis'))}>
 					{#each semuaJenisDonasi as j (j)}<option value={j}>{labelJenisDonasi[j]}</option>{/each}
 				</select>
+				{#if programId}<input type="hidden" name="jenis" value="infak" />{/if}
 				{#if galat('jenis')}<span class="galat" role="alert">{galat('jenis')}</span>{/if}
 			</div>
 			<div class="field">
@@ -106,6 +129,14 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 1rem;
+	}
+	.centang {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+		font-weight: 400 !important;
+		cursor: pointer;
 	}
 	@media (max-width: 560px) {
 		.dua {

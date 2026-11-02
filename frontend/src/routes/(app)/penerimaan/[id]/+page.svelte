@@ -41,6 +41,11 @@
 		<div>
 			<h1>{d.nama}</h1>
 			<p class="redup">{labelJenisDonasi[d.jenis]} · {d.sumber === 'web' ? 'dari halaman publik' : 'dicatat petugas'}</p>
+			{#if d.program_id}
+				<p class="redup">
+					Program: <a href="/program-donasi/{d.program_id}">{d.program_judul}</a>{#if d.anonim} · nama disembunyikan di daftar donatur publik{/if}
+				</p>
+			{/if}
 		</div>
 		<span class="badge {warnaStatusDonasi[d.status]}">{labelStatusDonasi[d.status]}</span>
 	</div>

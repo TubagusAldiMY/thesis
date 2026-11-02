@@ -40,12 +40,15 @@ func (a *API) buatDonasiWeb(w http.ResponseWriter, r *http.Request) {
 		Jenis      domain.JenisDonasi `json:"jenis"`
 		Jumlah     int64              `json:"jumlah"`
 		Keterangan string             `json:"keterangan"`
+		Program    string             `json:"program"` // slug; kosong = donasi umum
+		Anonim     bool               `json:"anonim"`
 	}
 	if !a.bacaJSON(w, r, &in) {
 		return
 	}
 	p, err := a.svc.BuatDonasiWeb(r.Context(), service.DonasiWebInput{
 		Nama: in.Nama, NoHP: in.NoHP, Jenis: in.Jenis, Jumlah: in.Jumlah, Keterangan: in.Keterangan,
+		Program: in.Program, Anonim: in.Anonim,
 	})
 	if err != nil {
 		a.gagal(w, r, err)
@@ -126,7 +129,8 @@ func (a *API) simulasikanBayar(w http.ResponseWriter, r *http.Request) {
 func (a *API) daftarDonasi(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	h, err := a.svc.DaftarDonasi(r.Context(), service.DonasiQuery{
-		Status: domain.StatusDonasi(q.Get("status")), Jenis: domain.JenisDonasi(q.Get("jenis")), Q: q.Get("q"),
+		Status: domain.StatusDonasi(q.Get("status")), Jenis: domain.JenisDonasi(q.Get("jenis")),
+		Program: q.Get("program"), Q: q.Get("q"),
 		Page: angkaQuery(r, "page", 1), PerPage: angkaQuery(r, "per_page", 20),
 	})
 	if err != nil {
@@ -146,13 +150,15 @@ func (a *API) catatDonasi(w http.ResponseWriter, r *http.Request) {
 		Metode     string             `json:"metode"`
 		Keterangan string             `json:"keterangan"`
 		Tanggal    string             `json:"tanggal"`
+		ProgramID  string             `json:"program_id"`
+		Anonim     bool               `json:"anonim"`
 	}
 	if !a.bacaJSON(w, r, &in) {
 		return
 	}
 	v, err := a.svc.CatatDonasiManual(r.Context(), userDari(r.Context()).ID, service.DonasiManualInput{
 		Nama: in.Nama, NoHP: in.NoHP, Jenis: in.Jenis, Jumlah: in.Jumlah, Metode: in.Metode,
-		Keterangan: in.Keterangan, Tanggal: in.Tanggal,
+		Keterangan: in.Keterangan, Tanggal: in.Tanggal, ProgramID: in.ProgramID, Anonim: in.Anonim,
 	})
 	if err != nil {
 		a.gagal(w, r, err)

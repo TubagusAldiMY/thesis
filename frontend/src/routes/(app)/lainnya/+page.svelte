@@ -5,6 +5,7 @@
 	let { data }: PageProps = $props();
 	const menu = $derived([
 		{ href: '/penerimaan', label: 'Donasi', lencana: data.donasiBaru },
+		{ href: '/program-donasi', label: 'Program donasi', lencana: 0 },
 		{ href: '/kriteria', label: 'Kriteria & bobot', lencana: 0 },
 		{ href: '/audit', label: 'Audit log', lencana: 0 },
 		{ href: '/laporan', label: 'Laporan', lencana: 0 },

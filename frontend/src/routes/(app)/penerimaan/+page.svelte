@@ -16,7 +16,7 @@
 
 	/** tautan membuat URL dengan filter saat ini + perubahan. */
 	function tautan(ubah: Record<string, string | number>) {
-		const p = new URLSearchParams({ q: data.q, status: data.status, jenis: data.jenis, page: String(data.page) });
+		const p = new URLSearchParams({ q: data.q, status: data.status, jenis: data.jenis, program: data.program?.id ?? '', page: String(data.page) });
 		for (const [k, v] of Object.entries(ubah)) p.set(k, String(v));
 		for (const k of [...p.keys()]) if (!p.get(k) || (k === 'page' && p.get(k) === '1')) p.delete(k);
 		const s = p.toString();
@@ -55,7 +55,14 @@
 	</section>
 
 	<section class="kartu tumpuk">
+		{#if data.program}
+			<p class="kotak-info baris-baru" role="status">
+				<span>Menampilkan donasi untuk program <strong>{data.program.judul}</strong>.</span>
+				<a class="tombol kecil" href="/penerimaan">Hapus filter program</a>
+			</p>
+		{/if}
 		<form method="GET" class="cari" role="search">
+			{#if data.program}<input type="hidden" name="program" value={data.program.id} />{/if}
 			<label class="sr-only" for="q">Cari nama donatur</label>
 			<input id="q" name="q" type="search" placeholder="Cari nama donatur…" value={data.q} maxlength="100" />
 			{#if data.status}<input type="hidden" name="status" value={data.status} />{/if}
@@ -92,7 +99,10 @@
 									<a class="nama" href="/penerimaan/{d.id}"><strong>{d.nama}</strong></a>
 									{#if d.baru}<span class="badge kuning">Baru</span>{/if}
 								</td>
-								<td>{labelJenisDonasi[d.jenis]}</td>
+								<td>
+									{labelJenisDonasi[d.jenis]}
+									{#if d.program_judul}<small class="program-kecil">{d.program_judul}</small>{/if}
+								</td>
 								<td class="kanan angka nowrap">{rupiah(d.jumlah)}</td>
 								<td class="lebar-saja">{d.sumber === 'web' ? 'Web' : 'Petugas'}</td>
 								<td><span class="badge {warnaStatusDonasi[d.status]}">{labelStatusDonasi[d.status]}</span></td>
@@ -114,6 +124,11 @@
 </div>
 
 <style>
+	.program-kecil {
+		display: block;
+		color: var(--teks-redup);
+		font-size: 0.78rem;
+	}
 	.cari {
 		display: flex;
 		gap: 0.75rem;

@@ -25,7 +25,9 @@
 	let jumlah = $state(form?.nilai?.jumlah ?? '');
 	// svelte-ignore state_referenced_locally
 	let jenis = $state(form?.nilai?.jenis || 'zakat_fitrah');
-	const nilai = $derived({ nama: form?.nilai?.nama ?? '', keterangan: form?.nilai?.keterangan ?? '' });
+	const nilai = $derived({ nama: form?.nilai?.nama ?? '', keterangan: form?.nilai?.keterangan ?? '', anonim: form?.nilai?.anonim ?? false });
+	// Donasi ke program (?program=slug): jenis selalu infak (zakat disalurkan lewat donasi umum).
+	const program = $derived(data.program);
 
 	const galat = (f: string) => form?.fields?.[f] ?? '';
 	// Pesan umum (mis. 429 terlalu banyak permintaan, 502 gateway bermasalah) = error tanpa pesan per kolom.
@@ -33,7 +35,7 @@
 	const jumlahAngka = $derived(parseAngka(jumlah));
 </script>
 
-<svelte:head><title>Donasi zakat & infak · {masjid.nama}</title></svelte:head>
+<svelte:head><title>{program ? `Donasi: ${program.judul}` : 'Donasi zakat & infak'} · {masjid.nama}</title></svelte:head>
 
 <div class="halaman">
 	<aside class="hero">
@@ -43,10 +45,22 @@
 			</svg>
 			Dikelola pengurus masjid
 		</span>
-		<h1>Donasi Zakat & Infak</h1>
-		<p class="pengantar">
-			Salurkan zakat dan infak Anda melalui {masjid.nama}. Setelah pembayaran berhasil, kuitansi digital dapat langsung dilihat dan dicetak.
-		</p>
+		{#if program}
+			<h1>{program.judul}</h1>
+			<p class="pengantar">{program.ringkasan}</p>
+			<div class="kemajuan">
+				<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={program.persen} aria-label="Kemajuan donasi">
+					<span style:width="{program.persen}%"></span>
+				</div>
+				<p><strong>Rp {angka(program.terkumpul)}</strong> terkumpul dari Rp {angka(program.target)} · {program.donatur} donatur</p>
+				<a class="tautan-program" href="/program/{program.slug}">Lihat halaman program →</a>
+			</div>
+		{:else}
+			<h1>Donasi Zakat & Infak</h1>
+			<p class="pengantar">
+				Salurkan zakat dan infak Anda melalui {masjid.nama}. Setelah pembayaran berhasil, kuitansi digital dapat langsung dilihat dan dicetak.
+			</p>
+		{/if}
 
 		<ol class="langkah">
 			<li><span class="no">1</span><div><strong>Isi data donasi</strong><small>Nama, jenis, dan jumlah donasi.</small></div></li>
@@ -71,6 +85,10 @@
 		<p class="kotak-info" role="status">
 			Donasi online belum diaktifkan oleh pengurus masjid. Silakan hubungi pengurus{masjid.kontak ? ` di ${masjid.kontak}` : ''} atau datang langsung ke masjid.
 		</p>
+	{:else if program && !program.terbuka}
+		<p class="kotak-info" role="status">
+			Program ini sudah tidak menerima donasi. Lihat <a href="/program">program lain</a> atau berdonasi lewat <a href="/donasi">donasi umum</a>.
+		</p>
 	{:else}
 		<form
 			method="POST"
@@ -91,20 +109,33 @@
 				<input id="nama" name="nama" type="text" required maxlength="100" autocomplete="name" placeholder="mis. Hamba Allah / nama pribadi" value={nilai.nama} aria-invalid={Boolean(galat('nama'))} />
 				<small>Tertulis di kuitansi. Boleh memakai nama keluarga atau "Hamba Allah".</small>
 				{#if galat('nama')}<span class="galat" role="alert">{galat('nama')}</span>{/if}
+				{#if program}
+					<label class="centang">
+						<input type="checkbox" name="anonim" checked={nilai.anonim} />
+						<span>Sembunyikan nama saya di daftar donatur (tampil sebagai "Hamba Allah")</span>
+					</label>
+				{/if}
 			</div>
 
-			<fieldset class="field">
-				<legend>Jenis donasi <span class="wajib">*</span></legend>
-				<div class="pil-baris">
-					{#each semuaJenisDonasi as j (j)}
-						<label class="pil">
-							<input type="radio" name="jenis" value={j} bind:group={jenis} />
-							<span>{labelJenisDonasi[j]}</span>
-						</label>
-					{/each}
-				</div>
-				{#if galat('jenis')}<span class="galat" role="alert">{galat('jenis')}</span>{/if}
-			</fieldset>
+			{#if program}
+				<input type="hidden" name="program" value={program.slug} />
+				<input type="hidden" name="jenis" value="infak" />
+				<p class="kotak-info kecil">Donasi untuk program ini berupa <strong>infak</strong>. Untuk zakat, gunakan <a href="/donasi">donasi umum</a>.</p>
+				{#if galat('program') || galat('jenis')}<span class="galat" role="alert">{galat('program') || galat('jenis')}</span>{/if}
+			{:else}
+				<fieldset class="field">
+					<legend>Jenis donasi <span class="wajib">*</span></legend>
+					<div class="pil-baris">
+						{#each semuaJenisDonasi as j (j)}
+							<label class="pil">
+								<input type="radio" name="jenis" value={j} bind:group={jenis} />
+								<span>{labelJenisDonasi[j]}</span>
+							</label>
+						{/each}
+					</div>
+					{#if galat('jenis')}<span class="galat" role="alert">{galat('jenis')}</span>{/if}
+				</fieldset>
+			{/if}
 
 			<fieldset class="field">
 				<legend>Jumlah donasi (Rp) <span class="wajib">*</span></legend>
@@ -250,6 +281,41 @@
 		align-items: center;
 		gap: 0.6rem;
 		color: rgb(255 255 255 / 0.9);
+	}
+	/* Ringkasan program di kartu hijau (donasi ke program). */
+	.kemajuan {
+		display: grid;
+		gap: 0.5rem;
+		font-size: 0.9rem;
+	}
+	.kemajuan .bar {
+		height: 8px;
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.2);
+		overflow: hidden;
+	}
+	.kemajuan .bar span {
+		display: block;
+		height: 100%;
+		background: var(--kuning);
+		border-radius: inherit;
+	}
+	.tautan-program {
+		color: #fff;
+		font-weight: 600;
+	}
+	.centang {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin-top: 0.6rem;
+		font-weight: 400 !important;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	.centang input {
+		margin-top: 0.2rem;
+		accent-color: var(--hijau);
 	}
 
 	.kartu-form {

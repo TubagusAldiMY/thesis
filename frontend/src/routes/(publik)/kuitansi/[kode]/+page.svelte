@@ -69,7 +69,7 @@
 				<dt>Terbilang</dt>
 				<dd><em>{terbilang(p.jumlah)}</em></dd>
 				<dt>Untuk pembayaran</dt>
-				<dd>{labelJenisDonasi[p.jenis]}</dd>
+				<dd>{labelJenisDonasi[p.jenis]}{#if p.program_judul} — program “{p.program_judul}”{/if}</dd>
 				<dt>Metode</dt>
 				<dd>{metode}</dd>
 				<dt>Tanggal</dt>

@@ -111,6 +111,17 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	mux.Handle("GET /api/donasi/{id}", a.peran(a.ambilDonasi, semua...))
 	mux.Handle("POST /api/donasi/{id}/batal", a.peran(a.batalkanDonasi, admin...))
 
+	// Program donasi (penggalangan bertarget) — pengurus. Ketua boleh melihat;
+	// hanya Admin yang membuat, mengubah, mengunggah gambar, dan menulis kabar.
+	mux.Handle("GET /api/program", a.peran(a.daftarProgram, semua...))
+	mux.Handle("POST /api/program", a.peran(a.buatProgram, admin...))
+	mux.Handle("GET /api/program/{id}", a.peran(a.ambilProgram, semua...))
+	mux.Handle("PUT /api/program/{id}", a.peran(a.ubahProgram, admin...))
+	mux.Handle("GET /api/program/{id}/gambar", a.peran(a.gambarProgram, semua...))
+	mux.Handle("PUT /api/program/{id}/gambar", a.peran(a.unggahGambarProgram, admin...))
+	mux.Handle("POST /api/program/{id}/kabar", a.peran(a.tambahKabar, admin...))
+	mux.Handle("DELETE /api/program/{id}/kabar/{kabar}", a.peran(a.hapusKabar, admin...))
+
 	// Donasi — PUBLIK (tanpa sesi; ini satu-satunya kelompok rute tanpa peran()
 	// selain login/healthz). Dijaga pembatas laju per IP, validasi ketat di
 	// service, dan kode rahasia 128 bit untuk akses ke satu donasi. Notifikasi
@@ -120,6 +131,10 @@ func New(svc *service.Service, log *slog.Logger, cookieSecure bool, ping func(co
 	mux.Handle("GET /api/publik/ringkasan", a.batasi(a.batasBaca, a.ringkasanPublik))
 	mux.Handle("POST /api/publik/donasi", a.batasi(a.batasBuat, a.buatDonasiWeb))
 	mux.Handle("GET /api/publik/donasi/{kode}", a.batasi(a.batasBaca, a.donasiPublik))
+	// Program donasi publik: draf tidak pernah tampil; nama donatur anonim disamarkan di service.
+	mux.Handle("GET /api/publik/program", a.batasi(a.batasBaca, a.daftarProgramPublik))
+	mux.Handle("GET /api/publik/program/{slug}", a.batasi(a.batasBaca, a.programPublik))
+	mux.Handle("GET /api/publik/program/{slug}/gambar", a.batasi(a.batasBaca, a.gambarProgramPublik))
 	mux.HandleFunc("POST /api/publik/midtrans/notifikasi", a.notifikasiGerbang)
 	if a.simulasiBayar != nil {
 		mux.Handle("POST /api/publik/tiruan/{kode}/bayar", a.batasi(a.batasBuat, a.simulasikanBayar))

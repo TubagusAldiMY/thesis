@@ -14,7 +14,11 @@ import (
 )
 
 // CAST ... AS SIGNED: DECIMAL(15,2) dibaca sebagai int64 rupiah utuh (sama seperti periode).
-const kolomDonasi = `id, kode_publik, nama, no_hp_enc, jenis, CAST(jumlah AS SIGNED) AS jumlah, sumber,
+// Judul program diambil lewat subquery (bukan JOIN) supaya semua query tetap
+// `FROM donasi` dan kunci FOR UPDATE cukup dibatasi ke tabel donasi.
+const kolomDonasi = `id, kode_publik, nama, anonim, no_hp_enc, jenis, program_id,
+	(SELECT p.judul FROM program_donasi p WHERE p.id = donasi.program_id) AS program_judul,
+	CAST(jumlah AS SIGNED) AS jumlah, sumber,
 	metode, status, nomor_kuitansi, keterangan, bayar_url, dibayar_pada, dilihat_pada, dicatat_oleh,
 	alasan_batal, created_at, updated_at`
 
@@ -22,8 +26,11 @@ type donasiRow struct {
 	ID            string         `db:"id"`
 	KodePublik    string         `db:"kode_publik"`
 	Nama          string         `db:"nama"`
+	Anonim        bool           `db:"anonim"`
 	NoHPEnc       []byte         `db:"no_hp_enc"`
 	Jenis         string         `db:"jenis"`
+	ProgramID     sql.NullString `db:"program_id"`
+	ProgramJudul  sql.NullString `db:"program_judul"`
 	Jumlah        int64          `db:"jumlah"`
 	Sumber        string         `db:"sumber"`
 	Metode        sql.NullString `db:"metode"`
@@ -41,8 +48,9 @@ type donasiRow struct {
 
 func (r donasiRow) domain() domain.Donasi {
 	return domain.Donasi{
-		ID: r.ID, KodePublik: r.KodePublik, Nama: r.Nama, NoHPEnc: r.NoHPEnc,
-		Jenis: domain.JenisDonasi(r.Jenis), Jumlah: r.Jumlah, Sumber: domain.SumberDonasi(r.Sumber),
+		ID: r.ID, KodePublik: r.KodePublik, Nama: r.Nama, Anonim: r.Anonim, NoHPEnc: r.NoHPEnc,
+		Jenis: domain.JenisDonasi(r.Jenis), ProgramID: r.ProgramID.String, ProgramJudul: r.ProgramJudul.String,
+		Jumlah: r.Jumlah, Sumber: domain.SumberDonasi(r.Sumber),
 		Metode: r.Metode.String, Status: domain.StatusDonasi(r.Status), NomorKuitansi: r.NomorKuitansi.String,
 		Keterangan: r.Keterangan.String, BayarURL: r.BayarURL.String, DibayarPada: r.DibayarPada,
 		DilihatPada: r.DilihatPada, DicatatOleh: r.DicatatOleh.String, AlasanBatal: r.AlasanBatal.String,
@@ -54,6 +62,7 @@ func (r donasiRow) domain() domain.Donasi {
 type DonasiFilter struct {
 	Status  domain.StatusDonasi
 	Jenis   domain.JenisDonasi
+	Program string // ID program
 	Q       string // potongan nama donatur
 	Page    int    // mulai 1
 	PerPage int    // bawaan 20, maksimal 100
@@ -84,6 +93,10 @@ func (f DonasiFilter) where() (string, []any) {
 		cond = append(cond, "jenis = ?")
 		args = append(args, string(f.Jenis))
 	}
+	if f.Program != "" {
+		cond = append(cond, "program_id = ?")
+		args = append(args, f.Program)
+	}
 	if f.Q != "" {
 		cond = append(cond, "nama LIKE ?")
 		args = append(args, "%"+escapeLike.Replace(f.Q)+"%")
@@ -96,10 +109,10 @@ func (f DonasiFilter) where() (string, []any) {
 func (s *Store) CreateDonasi(ctx context.Context, d *domain.Donasi) error {
 	id := newID()
 	_, err := s.q.ExecContext(ctx,
-		`INSERT INTO donasi (id, kode_publik, nama, no_hp_enc, jenis, jumlah, sumber, metode, status,
+		`INSERT INTO donasi (id, kode_publik, nama, anonim, no_hp_enc, jenis, program_id, jumlah, sumber, metode, status,
 		                     nomor_kuitansi, keterangan, bayar_url, dibayar_pada, dilihat_pada, dicatat_oleh)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, d.KodePublik, d.Nama, d.NoHPEnc, string(d.Jenis), d.Jumlah, string(d.Sumber), nullStr(d.Metode),
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, d.KodePublik, d.Nama, d.Anonim, d.NoHPEnc, string(d.Jenis), nullStr(d.ProgramID), d.Jumlah, string(d.Sumber), nullStr(d.Metode),
 		string(d.Status), nullStr(d.NomorKuitansi), nullStr(d.Keterangan), nullStr(d.BayarURL),
 		d.DibayarPada, d.DilihatPada, nullStr(d.DicatatOleh))
 	if err != nil {
@@ -133,7 +146,7 @@ func (s *Store) GetDonasiForUpdate(ctx context.Context, id string) (domain.Donas
 func (s *Store) ambilDonasi(ctx context.Context, kondisi, arg string, kunci bool) (domain.Donasi, error) {
 	q := `SELECT ` + kolomDonasi + ` FROM donasi WHERE ` + kondisi + ` AND deleted_at IS NULL`
 	if kunci {
-		q += ` FOR UPDATE`
+		q += ` FOR UPDATE OF donasi` // baris program (subquery judul) tidak ikut terkunci
 	}
 	var r donasiRow
 	if err := sqlx.GetContext(ctx, s.q, &r, q, arg); err != nil {

@@ -117,7 +117,8 @@ var KategoriAudit = map[string][]string{
 	"hitung":     {domain.AksiHitung},
 	"keputusan":  {domain.AksiSetuju, domain.AksiTolak, domain.AksiBukaKembali},
 	"penyaluran": {domain.AksiSalur, domain.AksiTutup},
-	"donasi":     {domain.AksiDonasiTerima, domain.AksiDonasiCatat, domain.AksiDonasiBatal},
+	"donasi": {domain.AksiDonasiTerima, domain.AksiDonasiCatat, domain.AksiDonasiBatal,
+		domain.AksiProgramBuat, domain.AksiProgramUbah, domain.AksiProgramKabar},
 }
 
 // AuditHalaman = satu halaman audit log.

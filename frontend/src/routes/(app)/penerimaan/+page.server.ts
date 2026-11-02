@@ -2,10 +2,11 @@
 // hanya Admin yang mencatat/membatalkan (dijaga Go dan halaman turunan).
 import { redirect } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
-import type { DonasiHalaman } from '$lib/types';
+import type { DonasiHalaman, Program } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const PER_HALAMAN = 20;
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATUS = ['menunggu', 'diterima', 'gagal', 'kedaluwarsa', 'dibatalkan'];
 const JENIS = ['zakat_fitrah', 'zakat_mal', 'zakat_profesi', 'infak'];
 
@@ -16,11 +17,14 @@ export const load: PageServerLoad = async (event) => {
 	const jenis = JENIS.includes(sp.get('jenis') ?? '') ? (sp.get('jenis') as string) : '';
 	const q = (sp.get('q') ?? '').slice(0, 100);
 	const page = Math.max(1, Number(sp.get('page')) || 1);
-	const p = new URLSearchParams({ q, status, jenis, page: String(page), per_page: String(PER_HALAMAN) });
+	// ?program=<id> (dari halaman kelola program): hanya ID berformat UUID yang diteruskan.
+	const idProgram = RE_UUID.test(sp.get('program') ?? '') ? (sp.get('program') as string) : '';
+	const p = new URLSearchParams({ q, status, jenis, program: idProgram, page: String(page), per_page: String(PER_HALAMAN) });
 	return {
 		q,
 		status,
 		jenis,
+		program: idProgram ? await api<Program>(event, 'GET', '/api/program/' + idProgram) : null,
 		page,
 		perHalaman: PER_HALAMAN,
 		hasil: await api<DonasiHalaman>(event, 'GET', '/api/donasi?' + p),

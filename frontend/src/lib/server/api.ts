@@ -68,6 +68,44 @@ export async function teruskan(event: RequestEvent, path: string, body: string):
 }
 
 /**
+ * kirimBerkas mengirim isi berkas MENTAH (mis. gambar sampul program) ke Go,
+ * dengan sesi dan header yang sama seperti `mentah`. Formulir multipart
+ * dibongkar di SvelteKit; Go cukup menerima bytes-nya dan menentukan jenis
+ * berkas dari isinya. Status diterjemahkan seperti `api`.
+ */
+export async function kirimBerkas(event: RequestEvent, path: string, isi: ArrayBuffer): Promise<void> {
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/octet-stream',
+		'X-Request-Id': event.locals.requestId,
+		'X-Real-IP': event.getClientAddress()
+	};
+	const token = event.cookies.get(NAMA_COOKIE);
+	if (token) headers.Cookie = `${NAMA_COOKIE}=${token}`;
+	let res: Response;
+	try {
+		res = await fetch(baseURL() + path, { method: 'PUT', headers, body: isi, signal: AbortSignal.timeout(30_000) });
+	} catch {
+		error(503, 'Server API tidak dapat dihubungi. Coba lagi beberapa saat.');
+	}
+	await baca<void>(event, res);
+}
+
+/**
+ * gambar meneruskan gambar sampul dari Go ke browser apa adanya (jenis berkas,
+ * cache, CSP). Gambar yang tidak ada → 404 tanpa body.
+ */
+export async function gambar(event: RequestEvent, path: string): Promise<Response> {
+	const res = await mentah(event, 'GET', path);
+	if (!res.ok) return new Response(null, { status: res.status === 401 ? 401 : 404 });
+	const h = new Headers();
+	for (const k of ['content-type', 'cache-control', 'content-security-policy']) {
+		const v = res.headers.get(k);
+		if (v) h.set(k, v);
+	}
+	return new Response(res.body, { status: 200, headers: h });
+}
+
+/**
  * api = mentah + penerjemahan status:
  *  - 2xx → body JSON (204 → undefined)
  *  - 401 → cookie dihapus, alihkan ke /login (sesi habis)

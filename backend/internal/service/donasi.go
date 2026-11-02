@@ -64,6 +64,8 @@ type DonasiWebInput struct {
 	Jenis      domain.JenisDonasi
 	Jumlah     int64
 	Keterangan string
+	Program    string // slug program tujuan; kosong = donasi umum
+	Anonim     bool   // sembunyikan nama di daftar donatur program
 }
 
 // DonasiManualInput = isian petugas saat mencatat penerimaan langsung di masjid.
@@ -75,6 +77,8 @@ type DonasiManualInput struct {
 	Metode     string // "tunai" | "transfer"
 	Keterangan string
 	Tanggal    string // yyyy-mm-dd, kosong = hari ini
+	ProgramID  string // kosong = donasi umum
+	Anonim     bool
 }
 
 // DonasiView = bentuk untuk pengurus. No. HP lengkap hanya diisi bila
@@ -83,9 +87,12 @@ type DonasiView struct {
 	ID            string              `json:"id"`
 	KodePublik    string              `json:"kode_publik"`
 	Nama          string              `json:"nama"`
+	Anonim        bool                `json:"anonim"`
 	NoHP          string              `json:"no_hp,omitempty"`
 	NoHPTersamar  string              `json:"no_hp_tersamar,omitempty"`
 	Jenis         domain.JenisDonasi  `json:"jenis"`
+	ProgramID     string              `json:"program_id"`
+	ProgramJudul  string              `json:"program_judul"`
 	Jumlah        int64               `json:"jumlah"`
 	Sumber        domain.SumberDonasi `json:"sumber"`
 	Metode        string              `json:"metode"`
@@ -106,6 +113,7 @@ type DonasiPublik struct {
 	Status        domain.StatusDonasi `json:"status"`
 	Nama          string              `json:"nama"`
 	Jenis         domain.JenisDonasi  `json:"jenis"`
+	ProgramJudul  string              `json:"program_judul,omitempty"`
 	Jumlah        int64               `json:"jumlah"`
 	Metode        string              `json:"metode"`
 	NomorKuitansi string              `json:"nomor_kuitansi,omitempty"`
@@ -117,6 +125,7 @@ type DonasiPublik struct {
 type DonasiQuery struct {
 	Status  domain.StatusDonasi
 	Jenis   domain.JenisDonasi
+	Program string // ID program
 	Q       string
 	Page    int
 	PerPage int
@@ -210,8 +219,8 @@ const (
 
 func (s *Service) viewDonasi(d domain.Donasi, mode modeHP) (DonasiView, error) {
 	v := DonasiView{
-		ID: d.ID, KodePublik: d.KodePublik, Nama: d.Nama, Jenis: d.Jenis, Jumlah: d.Jumlah,
-		Sumber: d.Sumber, Metode: d.Metode, Status: d.Status, NomorKuitansi: d.NomorKuitansi,
+		ID: d.ID, KodePublik: d.KodePublik, Nama: d.Nama, Anonim: d.Anonim, Jenis: d.Jenis,
+		ProgramID: d.ProgramID, ProgramJudul: d.ProgramJudul, Jumlah: d.Jumlah, Sumber: d.Sumber, Metode: d.Metode, Status: d.Status, NomorKuitansi: d.NomorKuitansi,
 		Keterangan: d.Keterangan, AlasanBatal: d.AlasanBatal, DibayarPada: d.DibayarPada,
 		DibuatPada: d.CreatedAt,
 		Baru:       d.Sumber == domain.SumberWeb && d.Status == domain.DonasiDiterima && d.DilihatPada == nil,
@@ -232,7 +241,7 @@ func (s *Service) viewDonasi(d domain.Donasi, mode modeHP) (DonasiView, error) {
 
 func publik(d domain.Donasi) DonasiPublik {
 	p := DonasiPublik{
-		ID: d.ID, Kode: d.KodePublik, Status: d.Status, Nama: d.Nama, Jenis: d.Jenis, Jumlah: d.Jumlah,
+		ID: d.ID, Kode: d.KodePublik, Status: d.Status, Nama: d.Nama, Jenis: d.Jenis, ProgramJudul: d.ProgramJudul, Jumlah: d.Jumlah,
 		Metode: d.Metode, NomorKuitansi: d.NomorKuitansi, DibayarPada: d.DibayarPada,
 	}
 	if d.Status == domain.DonasiMenunggu {
@@ -252,6 +261,10 @@ func (s *Service) BuatDonasiWeb(ctx context.Context, in DonasiWebInput) (DonasiP
 	hp := normalHP(in.NoHP)
 	g := galat{}
 	validasiDonatur(g, in.Nama, hp, in.Jenis, in.Jumlah, in.Keterangan)
+	program, err := s.programDonasi(ctx, g, strings.TrimSpace(in.Program), in.Jenis, true)
+	if err != nil {
+		return DonasiPublik{}, err
+	}
 	if err := g.err(); err != nil {
 		return DonasiPublik{}, err
 	}
@@ -265,16 +278,20 @@ func (s *Service) BuatDonasiWeb(ctx context.Context, in DonasiWebInput) (DonasiP
 	}
 
 	d := domain.Donasi{
-		KodePublik: kode, Nama: strings.TrimSpace(in.Nama), NoHPEnc: hpEnc, Jenis: in.Jenis,
-		Jumlah: in.Jumlah, Sumber: domain.SumberWeb, Status: domain.DonasiMenunggu,
+		KodePublik: kode, Nama: strings.TrimSpace(in.Nama), Anonim: in.Anonim, NoHPEnc: hpEnc, Jenis: in.Jenis,
+		ProgramID: program.ID, Jumlah: in.Jumlah, Sumber: domain.SumberWeb, Status: domain.DonasiMenunggu,
 		Keterangan: strings.TrimSpace(in.Keterangan),
 	}
 	if err := s.st.CreateDonasi(ctx, &d); err != nil {
 		return DonasiPublik{}, fmt.Errorf("service.BuatDonasiWeb: %w", err)
 	}
 
+	item := namaJenisDonasi[d.Jenis]
+	if program.ID != "" {
+		item += " " + program.Judul // dipotong 50 karakter oleh adapter Midtrans
+	}
 	hasil, err := s.gerbang.Buat(ctx, domain.PermintaanBayar{
-		OrderID: d.ID, Jumlah: d.Jumlah, NamaDonatur: d.Nama, NamaItem: namaJenisDonasi[d.Jenis],
+		OrderID: d.ID, Jumlah: d.Jumlah, NamaDonatur: d.Nama, NamaItem: item,
 		SelesaiURL: s.urlWeb + "/donasi/selesai?kode=" + kode, KedaluwarsaMenit: kedaluwarsaMenit,
 	})
 	if err != nil {
@@ -394,6 +411,10 @@ func (s *Service) CatatDonasiManual(ctx context.Context, petugasID string, in Do
 			tanggal = w.Add(12 * time.Hour) // tengah hari WIB: tanggal tetap benar di zona mana pun
 		}
 	}
+	program, err := s.programDonasi(ctx, g, strings.TrimSpace(in.ProgramID), in.Jenis, false)
+	if err != nil {
+		return DonasiView{}, err
+	}
 	if err := g.err(); err != nil {
 		return DonasiView{}, err
 	}
@@ -414,8 +435,8 @@ func (s *Service) CatatDonasiManual(ctx context.Context, petugasID string, in Do
 			return err
 		}
 		d = domain.Donasi{
-			KodePublik: kode, Nama: strings.TrimSpace(in.Nama), NoHPEnc: hpEnc, Jenis: in.Jenis,
-			Jumlah: in.Jumlah, Sumber: domain.SumberPetugas, Metode: in.Metode, Status: domain.DonasiDiterima,
+			KodePublik: kode, Nama: strings.TrimSpace(in.Nama), Anonim: in.Anonim, NoHPEnc: hpEnc, Jenis: in.Jenis,
+			ProgramID: program.ID, Jumlah: in.Jumlah, Sumber: domain.SumberPetugas, Metode: in.Metode, Status: domain.DonasiDiterima,
 			NomorKuitansi: formatNomorKuitansi(tahun, urut),
 			Keterangan:    strings.TrimSpace(in.Keterangan), DibayarPada: &tanggal, DilihatPada: &sekarang,
 			DicatatOleh: petugasID,
@@ -442,11 +463,14 @@ func (s *Service) DaftarDonasi(ctx context.Context, q DonasiQuery) (DonasiHalama
 	if panjangRune(q.Q) > 100 {
 		g.tambah("q", "Kata kunci maksimal 100 karakter")
 	}
+	if len(q.Program) > 36 {
+		g.tambah("program", "Program tidak dikenal")
+	}
 	if err := g.err(); err != nil {
 		return DonasiHalaman{}, err
 	}
 	l, err := s.st.ListDonasi(ctx, store.DonasiFilter{
-		Status: q.Status, Jenis: q.Jenis, Q: strings.TrimSpace(q.Q), Page: q.Page, PerPage: q.PerPage,
+		Status: q.Status, Jenis: q.Jenis, Program: q.Program, Q: strings.TrimSpace(q.Q), Page: q.Page, PerPage: q.PerPage,
 	})
 	if err != nil {
 		return DonasiHalaman{}, fmt.Errorf("service.DaftarDonasi: %w", err)

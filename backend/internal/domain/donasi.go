@@ -49,8 +49,11 @@ type Donasi struct {
 	ID            string
 	KodePublik    string // rahasia tautan muzaki; jangan dilog
 	Nama          string
+	Anonim        bool   // nama disembunyikan di daftar donatur program (publik)
 	NoHPEnc       []byte // nil bila tidak diisi
 	Jenis         JenisDonasi
+	ProgramID     string // kosong = donasi umum
+	ProgramJudul  string // hanya dibaca (join), untuk tampilan
 	Jumlah        int64
 	Sumber        SumberDonasi
 	Metode        string

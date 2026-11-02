@@ -31,6 +31,7 @@
 	<dl class="ringkasan">
 		<dt>Atas nama</dt><dd>{p.nama}</dd>
 		<dt>Jenis</dt><dd>{labelJenisDonasi[p.jenis]}</dd>
+		{#if p.program_judul}<dt>Program</dt><dd>{p.program_judul}</dd>{/if}
 		<dt>Jumlah</dt><dd class="angka">{rupiah(p.jumlah)}</dd>
 		{#if p.nomor_kuitansi}<dt>No. kuitansi</dt><dd>{p.nomor_kuitansi}</dd>{/if}
 	</dl>

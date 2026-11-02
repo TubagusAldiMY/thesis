@@ -8,6 +8,7 @@
 <script lang="ts">
 	import IkonMasjid from '$lib/components/IkonMasjid.svelte';
 	import JadwalSalat from '$lib/components/JadwalSalat.svelte';
+	import KartuProgram from '$lib/components/KartuProgram.svelte';
 	import { angka, rupiah } from '$lib/format';
 	import { masjid } from '$lib/masjid';
 	import type { PageProps } from './$types';
@@ -49,6 +50,7 @@
 			<nav class="menu" aria-label="Navigasi utama">
 				<a href="#jadwal">Jadwal salat</a>
 				<a href="#donasi">Donasi</a>
+				<a href="/program">Program</a>
 				{#if tampilTransparansi}<a href="#transparansi">Transparansi</a>{/if}
 				<a href="#penyaluran">Penyaluran</a>
 				{#if adaKontak}<a href="#kontak">Kontak</a>{/if}
@@ -149,6 +151,21 @@
 				{/each}
 			</ol>
 		</section>
+
+		{#if data.program.length > 0}
+			<section class="lebar bagian program" id="program">
+				<div class="kepala-program">
+					<div>
+						<h2>Program donasi</h2>
+						<p class="redup">Dukung program kebaikan masjid yang sedang berjalan. Perkembangannya dilaporkan pengurus di setiap halaman program.</p>
+					</div>
+					<a class="tombol" href="/program">Lihat semua program →</a>
+				</div>
+				<div class="grid-program">
+					{#each data.program as p (p.id)}<KartuProgram program={p} />{/each}
+				</div>
+			</section>
+		{/if}
 
 		<section class="lebar bagian" id="penyaluran">
 			<div class="kepala-bagian">
@@ -488,6 +505,26 @@
 	}
 	.bagian + .bagian {
 		border-top: 1px solid var(--garis);
+	}
+	.program {
+		display: grid;
+		gap: 1.5rem;
+	}
+	.kepala-program {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-end;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+	.kepala-program p {
+		max-width: 60ch;
+		margin-top: 0.5rem;
+	}
+	.grid-program {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 1.25rem;
 	}
 	.dua-kolom {
 		display: grid;

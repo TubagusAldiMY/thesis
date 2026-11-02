@@ -166,7 +166,7 @@ Setelah menekan Hitung ARAS, hasil yang diharapkan: A2 0,8618 · A1 0,7346 · A4
 **Backend** (dari `App/backend`, `.env` sudah dimuat):
 
 ```bash
-go test -race -count=1 -cover ./...
+go test -race -count=1 -cover -timeout 30m ./...   # paket service ±10 menit dengan -race; batas bawaan Go 10 menit tidak cukup
 ```
 
 ±5 menit karena tiap test integrasi membuat database `spkzakat_test_<acak>` sendiri lalu menghapusnya (database `spkzakat` tidak disentuh). Tanpa `TEST_DATABASE_URL` hanya test murni yang jalan. Iterasi cepat tanpa database:
@@ -259,7 +259,7 @@ Ringkas (satu server masjid / VPS kecil):
    npm ci && npm run build
    ```
 
-6. **Jalankan frontend**: `ORIGIN=https://alamat-publik PORT=3000 API_URL=http://127.0.0.1:8090 node build`. `ORIGIN` wajib sama dengan alamat yang dibuka pengguna (dipakai pemeriksaan CSRF).
+6. **Jalankan frontend**: `ORIGIN=https://alamat-publik PORT=3000 API_URL=http://127.0.0.1:8090 BODY_SIZE_LIMIT=3M node build` (`BODY_SIZE_LIMIT` perlu untuk unggah gambar sampul program donasi ≤ 2 MB; image Docker frontend sudah memasangnya). `ORIGIN` wajib sama dengan alamat yang dibuka pengguna (dipakai pemeriksaan CSRF).
 7. **Reverse proxy HTTPS** (nginx/caddy) di depan port 3000 saja. Set `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1` supaya IP asli pengguna terbaca untuk penguncian login & audit.
 8. **Health check**: `curl -s http://127.0.0.1:8090/healthz` → `{"ok":true}` (503 bila MySQL tidak menjawab).
 9. **Log**: Go dan SvelteKit menulis JSON ke stdout (field `request_id` sama di keduanya). Kumpulkan dengan journald/Alloy → Loki bila perlu.
@@ -285,6 +285,8 @@ Ringkas (satu server masjid / VPS kecil):
 | `seed-demo.sh`: `GAGAL POST /api/mustahik → 401` | Server Go dijalankan dengan `COOKIE_SECURE=true`; curl tidak mengirim cookie Secure lewat http. Jalankan server dengan `COOKIE_SECURE=false` untuk dev. |
 | `seed-demo.sh`: `… 422 … NIK sudah terdaftar` | Data contoh sudah pernah dibuat. Pakai data yang ada, atau kosongkan database dev (`down -v`, migrasi ulang, buat akun ulang). |
 | `TEST_DATABASE_URL kosong: test integrasi MySQL dilewati` | `.env` belum dimuat ke shell. |
+| Halaman `/program` atau `/program-donasi` galat 500, log Go `Table '...program_donasi' doesn't exist` | Migrasi V005 belum dijalankan. Jalankan `cd backend && go run ./cmd/migrate`. Di Docker cukup bangun ulang: `docker compose --env-file .env up -d --build api web` (container `api` menjalankan migrasi setiap start). |
+| Unggah gambar sampul gagal dengan galat 413 / *Payload Too Large* | Frontend dijalankan `node build` tanpa `BODY_SIZE_LIMIT` (bawaan 512 KB). Set `BODY_SIZE_LIMIT=3M`. Batas sebenarnya tetap 2 MB (dicek SvelteKit dan Go). |
 | `migrate: isi migrasi yang sudah diterapkan berubah` | File `V*.sql` lama diedit. Kembalikan; perubahan skema = file migrasi **baru**. |
 | `NIK mustahik … tidak terbaca (kunci enkripsi salah atau data rusak)` | Kunci di `.env` berbeda dari saat data dibuat. Pulihkan kunci aslinya. |
 | Test gagal dengan selisih di digit ke-15/16 | Galat floating point; bandingkan dengan toleransi, jangan `==`. |

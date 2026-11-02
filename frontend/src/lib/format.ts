@@ -2,7 +2,7 @@
 // dd/mm/yyyy. Nilai di API tetap angka & ISO 8601; hanya tampilan yang diubah.
 // Juga label ramah untuk enum dari API (asnaf, status, aksi audit).
 
-import type { Asnaf, JenisDonasi, StatusDonasi, StatusPeriode } from './types';
+import type { Asnaf, JenisDonasi, StatusDonasi, StatusPeriode, StatusProgram } from './types';
 
 const fmtAngka = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
 
@@ -148,8 +148,31 @@ export const labelAksi: Record<string, string> = {
 	TUTUP: 'Tutup periode',
 	DONASI_TERIMA: 'Donasi web diterima',
 	DONASI_CATAT: 'Catat donasi',
-	DONASI_BATAL: 'Batalkan kuitansi'
+	DONASI_BATAL: 'Batalkan kuitansi',
+	PROGRAM_BUAT: 'Buat program donasi',
+	PROGRAM_UBAH: 'Ubah program donasi',
+	PROGRAM_KABAR: 'Kabar program donasi'
 };
+
+export const labelStatusProgram: Record<StatusProgram, string> = {
+	draf: 'Draf',
+	aktif: 'Aktif',
+	selesai: 'Selesai'
+};
+/** Kelas .badge untuk status program. */
+export const warnaStatusProgram: Record<StatusProgram, string> = {
+	draf: '',
+	aktif: 'hijau',
+	selesai: 'kuning'
+};
+
+/** Sisa waktu program untuk kartu: "12 hari lagi", "Hari terakhir", "Tanpa batas waktu", "Berakhir", "Selesai". */
+export function sisaWaktu(p: { sisa_hari: number | null; terbuka: boolean; status: StatusProgram }): string {
+	if (p.status === 'selesai') return 'Selesai';
+	if (!p.terbuka && p.sisa_hari !== null) return 'Berakhir';
+	if (p.sisa_hari === null) return 'Tanpa batas waktu';
+	return p.sisa_hari === 0 ? 'Hari terakhir' : `${p.sisa_hari} hari lagi`;
+}
 
 export const labelJenisDonasi: Record<JenisDonasi, string> = {
 	zakat_fitrah: 'Zakat Fitrah',

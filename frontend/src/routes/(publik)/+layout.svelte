@@ -11,8 +11,8 @@
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
-	// Hanya formulir donasi yang memakai tata letak dua kolom; halaman lain (kuitansi, status) tetap sempit.
-	const lebar = $derived(page.route.id === '/(publik)/donasi');
+	// Formulir donasi dan halaman program memakai tata letak lebar; halaman lain (kuitansi, status) tetap sempit.
+	const lebar = $derived(page.route.id === '/(publik)/donasi' || (page.route.id ?? '').startsWith('/(publik)/program'));
 </script>
 
 <div class="bingkai">
@@ -21,7 +21,10 @@
 			<IkonMasjid ukuran={32} />
 			<strong>{masjid.nama}</strong>
 		</a>
-		<a class="tautan-login" href="/login">Masuk pengurus</a>
+		<nav class="tautan-atas" aria-label="Navigasi publik">
+			<a href="/program">Program donasi</a>
+			<a href="/login">Masuk pengurus</a>
+		</nav>
 	</header>
 
 	<main class="isi" class:lebar>
@@ -57,9 +60,14 @@
 		text-decoration: none;
 		color: var(--teks);
 	}
-	.tautan-login {
+	.tautan-atas {
+		display: flex;
+		gap: 1rem;
 		font-size: 0.875rem;
+	}
+	.tautan-atas a {
 		color: var(--teks-redup);
+		white-space: nowrap;
 	}
 	.isi {
 		flex: 1;

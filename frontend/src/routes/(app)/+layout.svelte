@@ -19,6 +19,7 @@
 			{ href: '/kriteria', label: 'Kriteria', tampil: true },
 			{ href: '/periode', label: 'Periode', tampil: true },
 			{ href: '/penerimaan', label: 'Donasi', tampil: true, lencana: data.donasiBaru },
+			{ href: '/program-donasi', label: 'Program donasi', tampil: true },
 			{ href: '/laporan', label: 'Laporan', tampil: true },
 			{ href: '/audit', label: 'Audit log', tampil: true }
 		].filter((m) => m.tampil)
