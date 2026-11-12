@@ -174,6 +174,12 @@ Skrip ini lebih dulu menjalankan `scripts/terapkan-kriteria-final.sh` (kriteria 
 
 Setelah menekan Hitung ARAS, hasil yang diharapkan: A2 0,8618 · A1 0,7346 · A4 0,6671 (penerima) · A5 0,6098 · A3 0,3849 (cadangan). Alur demo lengkap: Admin hitung → keluar → masuk sebagai Ketua → Hasil → Setujui → keluar → Admin → Penyaluran → Catat ×3 → Tutup periode → Laporan (Cetak/CSV).
 
+**Data volume (100 mustahik, untuk demo daftar/ekspor):** `scripts/seed-mustahik-100.sh` mengisi 100 mustahik lewat API yang sama (46 nama dari `DAFTAR JANDA YATIM DUAFA.xlsx` di root repo + 54 nama tambahan fiktif bergaya sama, NIK/alamat/No. HP sintetis), berguna untuk mendemokan daftar `/mustahik` dengan data banyak dan tombol "Unduh CSV". Prasyarat sama seperti `seed-demo.sh` (Go API `COOKIE_SECURE=false`, `DEMO_PASSWORD` terisi):
+
+```bash
+set -a && . ./.env && set +a && ./scripts/seed-mustahik-100.sh
+```
+
 ### 8. Test
 **Backend** (dari `App/backend`, `.env` sudah dimuat):
 
