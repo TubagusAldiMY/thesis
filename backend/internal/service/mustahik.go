@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -270,4 +272,46 @@ func (s *Service) DaftarMustahik(ctx context.Context, q MustahikQuery) (Mustahik
 		hasil.Items = append(hasil.Items, v)
 	}
 	return hasil, nil
+}
+
+// EksporMustahikCSV menulis SEMUA mustahik yang cocok filter q (tanpa
+// paginasi) ke w sebagai CSV. NIK/No. HP tetap tersamar seperti di tampilan
+// layar — ekspor tidak boleh membocorkan data pribadi mentah (UU PDP).
+func (s *Service) EksporMustahikCSV(ctx context.Context, q MustahikQuery, w io.Writer) error {
+	g := galat{}
+	q.Q = strings.TrimSpace(q.Q)
+	if panjangRune(q.Q) > 100 {
+		g.tambah("q", "Kata kunci maksimal 100 karakter")
+	}
+	if q.Asnaf != "" && !asnafSah(q.Asnaf) {
+		g.tambah("asnaf", "Golongan asnaf tidak dikenal")
+	}
+	if err := g.err(); err != nil {
+		return err
+	}
+
+	daftar, err := s.st.ListMustahikUntukExport(ctx, store.MustahikFilter{Q: q.Q, Asnaf: q.Asnaf, Aktif: q.Aktif})
+	if err != nil {
+		return fmt.Errorf("service.EksporMustahikCSV: %w", err)
+	}
+
+	baris := [][]string{{"Nama", "NIK", "No. HP", "Alamat", "Golongan", "Status", "Dibuat Pada"}}
+	for _, m := range daftar {
+		v, err := s.view(m)
+		if err != nil {
+			return fmt.Errorf("service.EksporMustahikCSV: %w", err)
+		}
+		status := "Nonaktif"
+		if v.Aktif {
+			status = "Aktif"
+		}
+		baris = append(baris, []string{
+			selCSV(v.Nama), selCSV(v.NIKTersamar), selCSV(v.NoHPTersamar), selCSV(v.Alamat),
+			string(v.Asnaf), status, v.DibuatPada.Format(time.DateOnly),
+		})
+	}
+	if err := csv.NewWriter(w).WriteAll(baris); err != nil {
+		return fmt.Errorf("service.EksporMustahikCSV: %w", err)
+	}
+	return nil
 }

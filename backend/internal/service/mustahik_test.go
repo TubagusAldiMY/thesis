@@ -307,6 +307,48 @@ func TestDaftarMustahik(t *testing.T) {
 	})
 }
 
+// TestEksporMustahikCSV: isi CSV sesuai filter, NIK/No. HP tetap tersamar
+// (bukan plaintext) — ekspor tidak boleh membocorkan data pribadi mentah.
+func TestEksporMustahikCSV(t *testing.T) {
+	e := baru(t)
+	e.buatMustahik(t, "Ahmad", "3271012345678901", domain.AsnafFakir, true)
+	e.buatMustahik(t, "Budi", "3271012345678902", domain.AsnafMiskin, true)
+	e.buatMustahik(t, "Citra", "3271012345678903", domain.AsnafMiskin, false)
+
+	t.Run("semua, tersamar", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := e.svc.EksporMustahikCSV(bg, MustahikQuery{}, &buf); err != nil {
+			t.Fatal(err)
+		}
+		isi := buf.String()
+		if !strings.HasPrefix(isi, "Nama,NIK,No. HP,Alamat,Golongan,Status,Dibuat Pada\n") {
+			t.Fatalf("header CSV tidak sesuai:\n%s", isi)
+		}
+		if strings.Count(isi, "\n") != 4 { // header + 3 mustahik
+			t.Errorf("jumlah baris CSV = %d, mau 4\n%s", strings.Count(isi, "\n"), isi)
+		}
+		if strings.Contains(isi, "32710123456789") {
+			t.Errorf("NIK bocor mentah di CSV:\n%s", isi)
+		}
+		if !strings.Contains(isi, "Budi,") || !strings.Contains(isi, "Aktif") || !strings.Contains(isi, "Nonaktif") {
+			t.Errorf("isi CSV tidak sesuai:\n%s", isi)
+		}
+	})
+	t.Run("filter golongan", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := e.svc.EksporMustahikCSV(bg, MustahikQuery{Asnaf: domain.AsnafFakir}, &buf); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Count(buf.String(), "\n") != 2 { // header + Ahmad saja
+			t.Errorf("filter asnaf tidak diterapkan:\n%s", buf.String())
+		}
+	})
+	t.Run("golongan tidak dikenal", func(t *testing.T) {
+		err := e.svc.EksporMustahikCSV(bg, MustahikQuery{Asnaf: "xx"}, &bytes.Buffer{})
+		cekValidasi(t, err, "asnaf")
+	})
+}
+
 func TestAmbilMustahik_TidakAda(t *testing.T) {
 	e := baru(t)
 	if _, err := e.svc.AmbilMustahik(bg, idHantu); !errors.Is(err, domain.ErrNotFound) {

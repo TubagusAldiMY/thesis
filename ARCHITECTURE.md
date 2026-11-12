@@ -134,6 +134,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `PUT /auth/password` | semua | lama benar, baru ≥ 12 & ≠ lama, kunci 5 gagal | update hash, hapus sesi lain | 204 → 422, 429 |
 | `GET /dashboard` | semua | – | jumlah per asnaf, periode berjalan, stepper, `total_tersalur_semua` (SUM penyaluran semua periode), dan `keuangan`: `zakat`/`infak` {diterima, tersalur, saldo}, total, `diterima_bulan_ini`, `per_jenis`, `bulanan` (12 bulan WIB), `donasi_terbaru` (5, tanpa No. HP) | 200 |
 | `GET /mustahik?q&asnaf&aktif&page&per_page` | admin | q ≤ 100, asnaf sah | SELECT + paging + `asnaf_counts` | 200 `{items,total,asnaf_counts}` |
+| `GET /mustahik?...&format=csv` | admin | sama (tanpa page/per_page) | SELECT SEMUA yang cocok filter (tanpa paging) | 200 CSV (BOM, header, NIK/HP tersamar) |
 | `POST /mustahik` | admin | nama 2–100, NIK 16 digit unik, HP opsional, alamat 5–500, asnaf | enkripsi + INSERT, audit | 201 → 422 |
 | `GET/PUT /mustahik/{id}` | admin | sama; NIK/HP kosong = tetap | UPDATE (nonaktif, bukan hapus) | 200 → 404, 409, 422 |
 | `GET /kriteria` | semua | – | SELECT urut | 200 `{items,total_persen}` |
@@ -198,7 +199,7 @@ Semua kecuali `login` dan `/healthz` butuh cookie `sesi`. Error: `{"error","requ
 | `/cara-kerja` | Penjelasan lengkap ARAS untuk awam, bergaya landing (hero hijau, navigasi pil `NavPil`, batang S bertumpuk, stepper 6 langkah, tanya jawab). Berkasnya `+page@.svelte` agar memakai layout root, bukan layout publik 680 px. Angka contoh dari `lib/aras-contoh.ts`, dijaga tes | publik |
 | `/login` | Formulir + sisa percobaan / terkunci | publik |
 | `/dashboard` | Beranda umum masjid bertema sama dengan landing (hero hijau tua berpola + ubin kaca 4 angka utama, tombol emas, **jadwal salat** hari ini): dana zakat vs infak, grafik 12 bulan, penerimaan per jenis, donasi terbaru; lalu bagian ARAS (stepper, periode terbaru). Aksi cepat hanya untuk Admin | semua |
-| `/mustahik`, `/mustahik/baru`, `/mustahik/[id]` | Daftar + chip golongan dinamis; formulir | admin (Ketua → 403) |
+| `/mustahik`, `/mustahik/baru`, `/mustahik/[id]`, `/mustahik/export.csv` | Daftar + chip golongan dinamis; formulir; unduh CSV (ikut filter q/asnaf) | admin (Ketua → 403) |
 | `/kriteria` | Edit nama, tipe, bobot, skala nilai (teks "1 = sehat", satu pilihan per baris), aktif/nonaktif, dan **tambah kriteria baru**; indikator total/aturan dihitung di layar, aturan akhir dijaga Go | admin ubah, ketua lihat |
 | `/periode`, `/periode/baru` | Daftar + filter status; formulir + kartu kuota langsung. Dana dibagi lewat SALAH SATU: nominal per penerima, atau jumlah penerima (nominal = ⌊dana ÷ jumlah⌋ dihitung server; rumus tampilan di `lib/periode.ts`) | semua / admin |
 | `/periode/[id]/kandidat`, `/penilaian` | Centang kandidat; grid/kartu nilai + Hitung ARAS | admin |
@@ -225,7 +226,7 @@ Pola tiap halaman: `+page.server.ts` memanggil `api()` (load) atau `aksi(() => a
 - Deny-by-default: setiap rute Go dibungkus `peran(...)`; frontend juga `wajibAdmin` untuk halaman Admin.
 - CSRF: cek `Origin` bawaan SvelteKit untuk form action; Go hanya menerima cookie SameSite=Strict.
 - CSP otomatis SvelteKit (`script-src 'self'` + hanya dua host Snap Midtrans `app.sandbox.midtrans.com`/`app.midtrans.com` untuk popup donasi), `X-Frame-Options: DENY`, `nosniff`, HSTS di production.
-- NIK/HP AES-256-GCM, hanya 4 digit terakhir yang tampil; tidak pernah masuk log/audit/CSV.
+- NIK/HP AES-256-GCM, hanya 4 digit terakhir yang tampil (JSON, UI, dan ekspor CSV mustahik); bentuk MENTAH tidak pernah masuk log/audit — laporan periode (ranking/penyaluran) juga tidak memuat NIK/HP sama sekali.
 - **Setup awal** (OWASP A01/A05/A07): bukan kredensial bawaan (tidak ada akun/password di migrasi atau `.env`). Siapa pun yang membuka `/setup` lebih dulu **tidak** bisa mengambil alih karena butuh kode dari log server; kode 128 bit, hanya di memori, dibandingkan waktu-konstan, dibatasi laju, dan dibuang setelah akun pertama; server menjawab 404 (bukan "sudah ditutup") bila setup tidak aktif. Kode memang dicetak ke log, satu-satunya pengecualian aturan "rahasia tidak masuk log", dan itulah bukti bahwa pemakainya punya akses ke server. Audit `SETUP_AWAL` tidak memuat kode maupun password.
 - **Kelola pengguna** (OWASP A01/A07): hanya peran Ketua (`peran(ketua)` di Go, `wajibKetua` di SvelteKit); hash password tidak pernah dikirim ke klien (`PenggunaView`); password hanya di body JSON, tidak masuk audit maupun log (diuji); nonaktif/reset mencabut semua sesi sasaran; Ketua tidak bisa mengunci dirinya sendiri dan Admin terakhir dilindungi dengan kunci baris (diuji konkuren).
 - **Konten kegiatan**: tulisan adalah teks biasa yang di-escape Svelte (tanpa HTML bebas, jadi tanpa XSS tersimpan); draf tidak pernah keluar dari Go; audit hanya jenis konten dan ID, tidak isi tulisan; gambar sampul memakai pengamanan yang sama dengan program donasi.

@@ -132,6 +132,17 @@ func (a *API) daftarMustahik(w http.ResponseWriter, r *http.Request) {
 		aktif := v == "true"
 		mq.Aktif = &aktif
 	}
+	if q.Get("format") == "csv" {
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="mustahik.csv"`)
+		if _, err := w.Write([]byte("\xEF\xBB\xBF")); err != nil { // BOM: Excel membaca UTF-8 dengan benar
+			return
+		}
+		if err := a.svc.EksporMustahikCSV(r.Context(), mq, w); err != nil {
+			a.logger(r).Error("ekspor mustahik CSV gagal", "error", err.Error())
+		}
+		return
+	}
 	h, err := a.svc.DaftarMustahik(r.Context(), mq)
 	if err != nil {
 		a.gagal(w, r, err)

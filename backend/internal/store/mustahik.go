@@ -136,6 +136,24 @@ func (s *Store) UpdateMustahik(ctx context.Context, m domain.Mustahik) error {
 	return nil
 }
 
+// ListMustahikUntukExport mengambil SEMUA mustahik yang cocok filter (tanpa
+// paginasi), dipakai ekspor CSV — berbeda dari ListMustahik yang membatasi
+// per halaman untuk tampilan layar.
+func (s *Store) ListMustahikUntukExport(ctx context.Context, f MustahikFilter) ([]domain.Mustahik, error) {
+	kondisi, args := f.where()
+	var rows []mustahikRow
+	err := sqlx.SelectContext(ctx, s.q, &rows,
+		`SELECT `+kolomMustahik+` FROM mustahik WHERE `+kondisi+` ORDER BY nama, id`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("store.ListMustahikUntukExport: %w", mapErr(err))
+	}
+	hasil := make([]domain.Mustahik, 0, len(rows))
+	for _, r := range rows {
+		hasil = append(hasil, r.domain())
+	}
+	return hasil, nil
+}
+
 // ListMustahik mengembalikan satu halaman (urut nama), total yang cocok
 // filter, dan jumlah mustahik aktif per golongan.
 func (s *Store) ListMustahik(ctx context.Context, f MustahikFilter) (MustahikList, error) {

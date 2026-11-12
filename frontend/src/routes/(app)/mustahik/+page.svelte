@@ -17,6 +17,15 @@
 		const s = p.toString();
 		return '/mustahik' + (s ? '?' + s : '');
 	}
+
+	/** tautanExport = ekspor CSV mengikuti filter pencarian/golongan saat ini. */
+	const tautanExport = $derived.by(() => {
+		const p = new URLSearchParams();
+		if (data.q) p.set('q', data.q);
+		if (data.asnaf) p.set('asnaf', data.asnaf);
+		const s = p.toString();
+		return '/mustahik/export.csv' + (s ? '?' + s : '');
+	});
 </script>
 
 <svelte:head><title>Mustahik · SPK Zakat</title></svelte:head>
@@ -27,7 +36,10 @@
 			<h1>Mustahik</h1>
 			<p class="redup">{totalAktif} mustahik aktif. Mustahik tidak dihapus; nonaktifkan bila tidak lagi diusulkan.</p>
 		</div>
-		<a class="tombol utama tambah" href="/mustahik/baru">+ Tambah mustahik</a>
+		<div class="baris-aksi">
+			<a class="tombol" href={tautanExport} download>Unduh CSV</a>
+			<a class="tombol utama tambah" href="/mustahik/baru">+ Tambah mustahik</a>
+		</div>
 	</div>
 
 	{#if data.tersimpan}<p class="kotak-sukses" role="status">Data mustahik tersimpan.</p>{/if}
